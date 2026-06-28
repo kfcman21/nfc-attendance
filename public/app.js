@@ -1429,6 +1429,34 @@ $('#neis-pick').addEventListener('click', async () => {
   await loadNeisConfig();
   showNeisMsg('ok', `${name} 학교로 설정했습니다.`);
 });
+const showNeisKeyTestMsg = (kind, text) => {
+  const el = $('#neis-key-test-msg');
+  if (!el) return;
+  el.style.display = 'block';
+  el.className = 'msg ' + (kind || '');
+  el.textContent = text;
+};
+
+$('#neis-key-test').addEventListener('click', async () => {
+  const key = $('#neis-key').value.trim();
+  if (!key) return showNeisKeyTestMsg('err', '인증키를 입력한 뒤 테스트해 주세요.');
+  showNeisKeyTestMsg('', '인증키 유효성 확인 중...');
+  try {
+    const res = await fetch('/api/neis/test-key', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key }),
+    });
+    const d = await res.json().catch(() => ({}));
+    if (res.ok && d.ok) {
+      showNeisKeyTestMsg('ok', d.message || '인증키가 유효하며 정상 통신됩니다. 👍');
+    } else {
+      showNeisKeyTestMsg('err', '검증 실패: ' + (d.error || '알 수 없는 오류'));
+    }
+  } catch (e) {
+    showNeisKeyTestMsg('err', '검증 오류: ' + e.message);
+  }
+});
 $('#neis-save').addEventListener('click', async () => {
   const ok = await saveNeisConfig();
   showNeisMsg(ok ? 'ok' : 'err', ok ? '저장했습니다.' : '저장 실패');

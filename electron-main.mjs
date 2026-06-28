@@ -94,12 +94,15 @@ function showSplash() {
   win.on('closed', () => (win = null));
 }
 
-app.whenReady().then(async () => {
+  app.whenReady().then(async () => {
   startServer();
   showSplash();
   try {
     await waitForServer();
-    if (win) win.loadURL(URL);
+    if (win) {
+      win.loadURL(URL);
+      win.webContents.openDevTools(); // 개발자 도구 창 강제 열기 (디버깅용)
+    }
   } catch (e) {
     dialog.showErrorBox('시작 실패', `서버를 시작하지 못했습니다.\n\n${e.message}`);
     app.quit();
