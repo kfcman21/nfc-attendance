@@ -1,0 +1,55 @@
+{
+  "name": "nfc-attendance",
+  "version": "1.7.0",
+  "description": "CR-100 NFC 리더기 학생 출석 프로그램",
+  "type": "module",
+  "main": "electron-main.mjs",
+  "scripts": {
+    "start": "electron .",
+    "server": "node src/server.mjs",
+    "sniff": "node tools/sniff.mjs",
+    "icon": "node tools/make-icon.mjs",
+    "dist": "electron-builder"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "serialport": "^12.0.0"
+  },
+  "devDependencies": {
+    "electron": "^42.5.0",
+    "electron-builder": "^24.13.3",
+    "png-to-ico": "^3.0.1",
+    "sharp": "^0.35.2"
+  },
+  "build": {
+    "appId": "com.nfc.attendance",
+    "productName": "NFC 학생출석",
+    "publish": null,
+    "asar": false,
+    "npmRebuild": false,
+    "files": [
+      "**/*",
+      "!data/**",
+      "!dist/**",
+      "!**/*.md",
+      "!.gitignore",
+      "!.claude/**"
+    ],
+    "win": {
+      "icon": "build/icon.ico",
+      "target": ["nsis", "portable"]
+    },
+    "portable": {
+      "artifactName": "NFC학생출석-${version}-portable.exe"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "NFC 학생출석",
+      "artifactName": "NFC학생출석-${version}-설치.exe"
+    }
+  }
+}

@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>학생 출석 - CR-100</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Noto+Sans+KR:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header>
+      <div class="brand">
+        <span class="brand__mark" aria-hidden="true">
+          <svg width="36" height="36" viewBox="0 0 34 34" fill="none">
+            <rect width="34" height="34" rx="8" fill="var(--panel2, #1c263e)" stroke="var(--line)" stroke-width="1" />
+            <g stroke="var(--primary, #0064e0)" stroke-width="2.4" stroke-linecap="round" fill="none" opacity="0.97">
+              <path d="M14.5 10.5a9 9 0 0 1 0 13" />
+              <path d="M18.5 8a13 13 0 0 1 0 18" />
+            </g>
+            <circle cx="11.5" cy="17" r="2.1" fill="var(--primary, #0064e0)" />
+          </svg>
+        </span>
+        <span class="brand__text">학생 출석<small>NFC 출석부</small></span>
+      </div>
+      <div class="header-right">
+        <div id="status" class="status status--off">
+          <span class="dot"></span><span id="status-text">리더기 연결 확인 중...</span>
+        </div>
+        <button id="theme-toggle" class="icon-btn" title="라이트 / 다크 모드">🌙</button>
+      </div>
+    </header>
+
+    <nav class="tabs">
+      <button class="tab active" data-tab="live">실시간 출석</button>
+      <button class="tab" data-tab="dash">대시보드</button>
+      <button class="tab" data-tab="weekly">📅 주간 점수</button>
+      <button class="tab" data-tab="mood">😊 감정 통계</button>
+      <button class="tab" data-tab="points">포인트 상점</button>
+      <button class="tab" data-tab="library">📖 도서 대여</button>
+      <button class="tab" data-tab="shuttle">🏃 셔틀런</button>
+      <button class="tab" data-tab="circuit">🏋️ 서킷</button>
+      <button class="tab" data-tab="students">학생 관리</button>
+      <button class="tab" data-tab="records">출석 현황</button>
+      <button class="tab" data-tab="reset">🗑 카드 초기화</button>
+      <button class="tab" data-tab="data">💾 데이터 관리</button>
+      <button class="tab" data-tab="settings">⚙ 설정·진단</button>
+    </nav>
+
+    <!-- 실시간 출석 -->
+    <section id="tab-live" class="tab-panel active">
+      <div class="airwx" data-airwx hidden></div>
+      <div class="neis-meal" id="neis-meal" hidden></div>
+      <div id="bigcard" class="bigcard bigcard--idle">
+        <div class="bigcard__hint">카드를 리더기에 대주세요</div>
+      </div>
+      <h2>오늘 출석 <span id="today-count" class="count">0</span></h2>
+      <ul id="today-list" class="taplist"></ul>
+    </section>
+
+    <!-- 출석현황 대시보드 -->
+    <section id="tab-dash" class="tab-panel">
+      <div class="toolbar" style="margin-bottom:16px">
+        <label>날짜
+          <input type="date" id="dash-date" />
+        </label>
+        <button id="dash-load">새로고침</button>
+      </div>
+
+      <div class="stats">
+        <div class="stat stat--ok"><div class="stat__num" id="s-present">0</div><div class="stat__lbl">출석</div></div>
+        <div class="stat stat--bad"><div class="stat__num" id="s-absent">0</div><div class="stat__lbl">미출석</div></div>
+        <div class="stat"><div class="stat__num" id="s-total">0</div><div class="stat__lbl">전체 학생</div></div>
+        <div class="stat stat--accent"><div class="stat__num" id="s-rate">0%</div><div class="stat__lbl">출석률</div></div>
+      </div>
+
+      <div class="stats">
+        <div class="stat stat--ok"><div class="stat__num" id="s-ontime">0</div><div class="stat__lbl">정시 (만점)</div></div>
+        <div class="stat stat--bad"><div class="stat__num" id="s-late">0</div><div class="stat__lbl">지각 (0점)</div></div>
+        <div class="stat stat--accent"><div class="stat__num" id="s-score">0</div><div class="stat__lbl">오늘 획득 점수</div></div>
+      </div>
+
+      <div class="card">
+        <h2>오늘의 기분 😊</h2>
+        <div id="mood-summary" class="mood-summary"></div>
+      </div>
+
+      <div class="card">
+        <h2>최근 7일 출석 추이</h2>
+        <div id="chart" class="chart"></div>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <h2>출석 <span id="present-count" class="count">0</span></h2>
+          <ul id="present-list" class="namelist"></ul>
+        </div>
+        <div class="card">
+          <h2>미출석 <span id="absent-count" class="count">0</span></h2>
+          <ul id="absent-list" class="namelist"></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 주간 점수 기록 -->
+    <section id="tab-weekly" class="tab-panel">
+      <div class="card">
+        <div class="toolbar" style="justify-content:space-between">
+          <div style="display:flex;gap:8px;align-items:center">
+            <button id="wk-prev" class="ghost">◀ 지난주</button>
+            <span id="wk-range" class="footnote">이번 주</span>
+            <button id="wk-next" class="ghost">다음주 ▶</button>
+            <button id="wk-today" class="secondary">이번 주</button>
+          </div>
+          <button id="wk-export" class="secondary">📊 엑셀 내보내기</button>
+        </div>
+        <p class="hint">
+          정해진 마감시각 안에 출석하면 <b>만점</b>, 지각·결석은 <b>0점</b>입니다. 마감시각·만점은 <b>⚙ 설정·진단</b> 탭에서 바꿀 수 있어요.
+        </p>
+        <div class="wk-legend">
+          <span><i class="wk-dot wk-dot--ontime"></i>정시(만점)</span>
+          <span><i class="wk-dot wk-dot--late"></i>지각(0점)</span>
+          <span><i class="wk-dot wk-dot--absent"></i>결석</span>
+        </div>
+        <div class="wk-table-wrap">
+          <table class="tbl wk-table">
+            <thead><tr id="wk-head"></tr></thead>
+            <tbody id="wk-rows"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 감정 출석부 통계 -->
+    <section id="tab-mood" class="tab-panel">
+      <div class="toolbar" style="margin-bottom:16px">
+        <label>시작일 <input type="date" id="mood-from" /></label>
+        <label>종료일 <input type="date" id="mood-to" /></label>
+        <button id="mood-load">조회</button>
+        <span class="footnote" id="mood-range-info"></span>
+      </div>
+
+      <!-- 반 감정 날씨 + 핵심 지표 -->
+      <div class="stats">
+        <div class="stat"><div class="stat__num" id="m-weather">🌫️</div><div class="stat__lbl" id="m-weather-lbl">반 감정 날씨</div></div>
+        <div class="stat stat--ok"><div class="stat__num" id="m-positive">0%</div><div class="stat__lbl">긍정 비율</div></div>
+        <div class="stat stat--accent"><div class="stat__num" id="m-score">0</div><div class="stat__lbl">감정 점수 (-2~+2)</div></div>
+        <div class="stat"><div class="stat__num" id="m-total">0</div><div class="stat__lbl">총 기록 수</div></div>
+      </div>
+
+      <!-- 감정 분포 -->
+      <div class="card">
+        <h2>감정 분포</h2>
+        <div id="mood-dist"></div>
+      </div>
+
+      <!-- 일별 감정 추이 -->
+      <div class="card">
+        <h2>일별 감정 추이</h2>
+        <div id="mood-trend" class="chart"></div>
+        <div id="mood-legend" class="mood-legend"></div>
+      </div>
+
+      <!-- 관심이 필요한 학생 -->
+      <div class="card">
+        <h2>🤗 관심이 필요한 학생 <span class="footnote">(피곤·슬픔·화남을 표시한 학생)</span></h2>
+        <ul id="mood-concern" class="namelist"></ul>
+      </div>
+    </section>
+
+    <!-- 학생 관리 -->
+    <section id="tab-students" class="tab-panel">
+      <div class="card">
+        <h2>학생 등록 <span class="footnote">(개인정보 없이 번호만으로 등록 가능)</span></h2>
+
+        <!-- 번호 빠른 등록 모드 -->
+        <div class="quickreg">
+          <label class="quickreg__toggle">
+            <input type="checkbox" id="qr-on" /> <b>번호 빠른 등록</b>
+          </label>
+          <div id="qr-controls" class="quickreg__controls" style="display:none">
+            <label>다음 번호 <input type="number" id="qr-next" min="1" value="1" style="width:90px" /></label>
+            <span class="footnote">카드를 태그할 때마다 이 번호로 자동 등록되고 번호가 1씩 올라갑니다.</span>
+            <div id="qr-msg" class="msg"></div>
+          </div>
+        </div>
+
+        <p class="hint">아래 칸을 클릭하고 카드를 태그하면 카드번호가 자동 입력됩니다. 이름은 선택 사항입니다.</p>
+        <form id="student-form" class="form">
+          <label>카드 UID
+            <input id="f-card" placeholder="카드를 태그하세요" autocomplete="off" required />
+          </label>
+          <label>번호 <span class="footnote">(권장)</span>
+            <input id="f-no" placeholder="예: 1" />
+          </label>
+          <label>이름 <span class="footnote">(선택)</span>
+            <input id="f-name" placeholder="(비워도 됨)" />
+          </label>
+          <label>학년/반 <span class="footnote">(선택)</span>
+            <input id="f-grade" placeholder="(선택)" />
+          </label>
+          <button type="submit">등록</button>
+        </form>
+        <div id="form-msg" class="msg"></div>
+      </div>
+
+      <div class="card">
+        <h2>등록된 학생 <span id="student-count" class="count">0</span></h2>
+        <table class="tbl">
+          <thead>
+            <tr><th>번호</th><th>이름</th><th>학년/반</th><th>카드 UID</th><th></th></tr>
+          </thead>
+          <tbody id="student-rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 출석 현황 -->
+    <section id="tab-records" class="tab-panel">
+      <div class="card">
+        <div class="toolbar">
+          <label>날짜
+            <input type="date" id="rec-date" />
+          </label>
+          <button id="rec-load">조회</button>
+          <button id="rec-export" class="secondary">CSV 내보내기</button>
+        </div>
+        <table class="tbl">
+          <thead>
+            <tr><th>번호</th><th>이름</th><th>출석 시각</th><th>상태</th><th>점수</th><th>카드 UID</th></tr>
+          </thead>
+          <tbody id="rec-rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 포인트 상점 -->
+    <section id="tab-points" class="tab-panel">
+      <div class="grid2">
+        <!-- 좌측: 카드 인식 및 포인트 조작 -->
+        <div class="card">
+          <h2>NFC 포인트 조작</h2>
+          <div id="point-scanner-card" class="bigcard bigcard--idle" style="min-height: 120px; margin-bottom: 20px;">
+            <div class="bigcard__hint">카드를 태그하면 학생 정보가 표시됩니다</div>
+          </div>
+          
+          <div id="point-control-box" class="point-control-box" style="display: none;">
+            <div class="student-info-large">
+              <span id="point-student-name" class="name" style="font-size: 24px; font-weight: bold; color: var(--text);">홍길동</span>
+              <span id="point-student-detail" class="detail" style="font-size: 14px; color: var(--text-mute); margin-left: 8px;">2학년 1반 · 학번 10번</span>
+            </div>
+            <div class="current-points-display" style="margin: 16px 0; font-size: 18px; color: var(--text);">
+              현재 보유 포인트: <strong id="point-student-val" style="font-size: 28px; color: var(--accent); font-weight: 800;">0</strong> P
+            </div>
+            
+            <div class="button-group" style="margin-top: 24px;">
+              <div class="group-title" style="font-weight: bold; font-size: 14px; color: var(--text-mute); margin-bottom: 8px;">포인트 적립</div>
+              <div class="buttons" style="display: flex; gap: 8px;">
+                <button class="btn-point btn-point--add" data-delta="1" style="flex: 1; padding: 12px; background: #e6f4ea; color: #137333; border: 1px solid #ceead6; border-radius: 6px; font-weight: bold; cursor: pointer;">+1 P</button>
+                <button class="btn-point btn-point--add" data-delta="5" style="flex: 1; padding: 12px; background: #e6f4ea; color: #137333; border: 1px solid #ceead6; border-radius: 6px; font-weight: bold; cursor: pointer;">+5 P</button>
+                <button class="btn-point btn-point--add" data-delta="10" style="flex: 1; padding: 12px; background: #e6f4ea; color: #137333; border: 1px solid #ceead6; border-radius: 6px; font-weight: bold; cursor: pointer;">+10 P</button>
+              </div>
+            </div>
+            
+            <div class="button-group" style="margin-top: 16px;">
+              <div class="group-title" style="font-weight: bold; font-size: 14px; color: var(--text-mute); margin-bottom: 8px;">포인트 사용 / 차감</div>
+              <div class="buttons" style="display: flex; gap: 8px;">
+                <button class="btn-point btn-point--sub" data-delta="-1" style="flex: 1; padding: 12px; background: #fce8e6; color: #c5221f; border: 1px solid #fad2cf; border-radius: 6px; font-weight: bold; cursor: pointer;">-1 P</button>
+                <button class="btn-point btn-point--sub" data-delta="-5" style="flex: 1; padding: 12px; background: #fce8e6; color: #c5221f; border: 1px solid #fad2cf; border-radius: 6px; font-weight: bold; cursor: pointer;">-5 P</button>
+                <button class="btn-point btn-point--sub" data-delta="-10" style="flex: 1; padding: 12px; background: #fce8e6; color: #c5221f; border: 1px solid #fad2cf; border-radius: 6px; font-weight: bold; cursor: pointer;">-10 P</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 우측: 학급 포인트 랭킹판 -->
+        <div class="card">
+          <h2>🏆 학급 포인트 랭킹</h2>
+          <div class="ranking-container" style="max-height: 400px; overflow-y: auto;">
+            <table class="tbl">
+              <thead>
+                <tr>
+                  <th style="width: 60px; text-align: center;">순위</th>
+                  <th>이름</th>
+                  <th>학년/반</th>
+                  <th style="text-align: right; padding-right: 20px;">포인트</th>
+                </tr>
+              </thead>
+              <tbody id="point-ranking-rows">
+                <!-- JavaScript에서 동적으로 생성됨 -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 도서 대여 & 학급 독서 온도계 -->
+    <section id="tab-library" class="tab-panel">
+      <!-- 대여/반납 안내 배너 -->
+      <div id="lending-banner" class="bigcard bigcard--idle">
+        <div class="bigcard__hint">① 학생 카드 → ② 도서 카드 순서로 태그하세요</div>
+      </div>
+
+      <!-- 학급 독서 온도계 -->
+      <div class="card">
+        <h2>🌡️ 학급 독서 온도계</h2>
+        <div class="thermo">
+          <div class="thermo__bar"><div id="thermo-fill" class="thermo__fill"></div></div>
+          <div class="thermo__info">
+            <span id="thermo-count" class="thermo__count">0</span>
+            <span id="thermo-goal" class="thermo__goal">/ 0권</span>
+            <span id="thermo-pct" class="thermo__pct">0%</span>
+          </div>
+        </div>
+        <div class="thermo__sub">
+          <span>📚 등록 도서 <b id="lib-total">0</b>권</span>
+          <span>📤 대여 중 <b id="lib-out">0</b>권</span>
+        </div>
+      </div>
+
+      <div class="grid2">
+        <!-- 독서왕 랭킹 -->
+        <div class="card">
+          <h2>🏆 우리 반 독서왕</h2>
+          <ul id="reading-rank" class="namelist"></ul>
+        </div>
+        <!-- 최근 한 줄 평 -->
+        <div class="card">
+          <h2>✍️ 최근 한 줄 평</h2>
+          <ul id="recent-reviews" class="reviewlist"></ul>
+        </div>
+      </div>
+
+      <!-- 도서 등록 -->
+      <div class="card">
+        <h2>도서 등록</h2>
+        <p class="hint">책에 붙인 NFC 카드를 태그하면 카드번호가 자동 입력됩니다. (대여 모드에서는 등록 칸에 입력되지 않으니, 이 탭에서 책 카드를 직접 태그하세요.)</p>
+        <form id="book-form" class="form">
+          <label>도서 카드 UID
+            <input id="b-card" placeholder="책 카드를 태그하세요" autocomplete="off" required />
+          </label>
+          <label>책 제목
+            <input id="b-title" placeholder="예: 마당을 나온 암탉" required />
+          </label>
+          <label>지은이
+            <input id="b-author" placeholder="(선택)" />
+          </label>
+          <button type="submit">도서 등록</button>
+        </form>
+        <div id="book-msg" class="msg"></div>
+      </div>
+
+      <!-- 등록된 도서 목록 -->
+      <div class="card">
+        <h2>등록된 도서 <span id="book-count" class="count">0</span></h2>
+        <table class="tbl">
+          <thead>
+            <tr><th>제목</th><th>지은이</th><th>상태</th><th>카드 UID</th><th></th></tr>
+          </thead>
+          <tbody id="book-rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 🏃 셔틀런 자동 기록기 -->
+    <section id="tab-shuttle" class="tab-panel">
+      <div class="airwx" data-airwx hidden></div>
+      <div id="shuttle-banner" class="bigcard bigcard--idle">
+        <div class="bigcard__hint">반환점에서 카드를 태그할 때마다 왕복 수가 올라갑니다</div>
+      </div>
+
+      <div class="card">
+        <div class="toolbar" style="justify-content:space-between">
+          <div style="display:flex;gap:10px;align-items:center">
+            <button id="pace-toggle">▶ 페이스 가이드 시작</button>
+            <span id="pace-info" class="footnote">레벨 1 · 준비</span>
+          </div>
+          <div style="display:flex;gap:10px">
+            <button id="shuttle-save" class="secondary">기록 저장 (세션 종료)</button>
+            <button id="shuttle-reset" class="ghost">초기화</button>
+          </div>
+        </div>
+        <div id="shuttle-board" class="runboard">
+          <div class="empty" style="color:var(--muted)">아직 달린 학생이 없어요. 카드를 태그해 시작하세요!</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>🏅 개인 최고 기록 (왕복 수)</h2>
+        <ul id="shuttle-rank" class="namelist"></ul>
+      </div>
+    </section>
+
+    <!-- 🏋️ 서킷 트레이닝 -->
+    <section id="tab-circuit" class="tab-panel">
+      <div class="airwx" data-airwx hidden></div>
+      <div id="circuit-banner" class="bigcard bigcard--idle">
+        <div class="bigcard__hint">시작: ① 학생 카드 → ② 스테이션 카드 &nbsp;/&nbsp; 종료: ② 스테이션 카드만 태그</div>
+      </div>
+
+      <div class="card">
+        <h2>⏱️ 진행 중인 운동</h2>
+        <div id="circuit-active" class="runboard">
+          <div class="empty" style="color:var(--muted)">진행 중인 운동이 없습니다.</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>📈 개인 체력 성장 그래프</h2>
+        <div class="toolbar" style="margin-bottom:10px">
+          <label>학생 선택
+            <select id="growth-student"></select>
+          </label>
+        </div>
+        <div id="growth-chart"></div>
+      </div>
+
+      <div class="card">
+        <h2>스테이션(종목) 등록</h2>
+        <p class="hint">스테이션 카드를 태그하면 카드번호가 자동 입력됩니다.</p>
+        <form id="station-form" class="form">
+          <label>스테이션 카드 UID
+            <input id="st-card" placeholder="스테이션 카드를 태그하세요" autocomplete="off" required />
+          </label>
+          <label>종목 이름
+            <input id="st-name" placeholder="예: 플랭크, 팔굽혀펴기" required />
+          </label>
+          <button type="submit">스테이션 등록</button>
+        </form>
+        <div id="station-msg" class="msg"></div>
+        <table class="tbl">
+          <thead><tr><th>종목</th><th>카드 UID</th><th></th></tr></thead>
+          <tbody id="station-rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 🗑 카드 초기화 -->
+    <section id="tab-reset" class="tab-panel">
+      <div id="reset-banner" class="bigcard bigcard--idle">
+        <div class="bigcard__hint">초기화할 카드를 리더기에 태그하세요</div>
+      </div>
+
+      <div class="card" id="reset-result" style="display:none">
+        <h2>카드 정보</h2>
+        <table class="tbl">
+          <tbody>
+            <tr><th style="width:120px">종류</th><td id="reset-kind">-</td></tr>
+            <tr><th>이름/제목</th><td id="reset-name">-</td></tr>
+            <tr><th>카드 UID</th><td class="uid" id="reset-uid">-</td></tr>
+          </tbody>
+        </table>
+        <div style="margin-top:16px;display:flex;gap:10px;align-items:center">
+          <button id="reset-do" class="danger" style="font-size:15px;padding:10px 18px">이 카드 등록 해제(초기화)</button>
+          <button id="reset-cancel" class="ghost">취소</button>
+        </div>
+        <p class="hint" id="reset-note" style="margin-top:12px"></p>
+      </div>
+
+      <p class="footnote" style="margin-top:8px">초기화하면 이 카드의 <b>등록(학생·도서·스테이션)</b>이 지워져 다른 용도로 다시 등록할 수 있습니다. 과거 출석·대여·체육 기록은 통계 보존을 위해 남습니다.</p>
+    </section>
+
+    <!-- 💾 데이터 관리 -->
+    <section id="tab-data" class="tab-panel">
+      <!-- 현재 데이터 현황 -->
+      <div class="card">
+        <h2>📊 현재 데이터 현황</h2>
+        <div id="data-stats" class="datagrid"></div>
+      </div>
+
+      <!-- 전체 백업 -->
+      <div class="card">
+        <h2>💾 전체 데이터 백업</h2>
+        <p class="hint">
+          모든 데이터(학생·출석·점수·감정·포인트·도서·체육)를 <b>하나의 백업 파일(.db)</b>로 내려받습니다.
+          초기화하기 전에 먼저 백업해 두면 안전합니다. 복원은 이 파일을 데이터 폴더의 <code>attendance.db</code>로 덮어쓰면 됩니다.
+        </p>
+        <button id="btn-backup" class="primary">⬇ 전체 백업 파일(.db) 내려받기</button>
+      </div>
+
+      <!-- 항목별 엑셀 저장 -->
+      <div class="card">
+        <h2>📑 항목별 엑셀(CSV) 저장</h2>
+        <p class="hint">필요한 자료만 골라 엑셀로 저장합니다.</p>
+        <div class="btn-row">
+          <button class="secondary" data-export="attendance">출석 기록</button>
+          <button class="secondary" data-export="weekly">주간 점수</button>
+          <button class="secondary" data-export="mood">감정 기록</button>
+          <button class="secondary" data-export="points">포인트</button>
+          <button class="secondary" data-export="library">도서 대여</button>
+          <button class="secondary" data-export="physical">체육 기록</button>
+        </div>
+      </div>
+
+      <!-- 데이터 초기화 -->
+      <div class="card card--danger">
+        <h2>🧹 데이터 초기화</h2>
+        <p class="hint">
+          <b style="color:var(--sale)">되돌릴 수 없습니다.</b> 초기화 전에 위에서 <b>전체 백업</b>을 먼저 받으세요.
+          아래 "기록 초기화"는 학생·도서 <b>등록 정보는 유지</b>하고 활동 기록만 지웁니다.
+        </p>
+        <div class="reset-list">
+          <div class="reset-item"><span>📋 출석 기록 <b id="rc-attendance" class="footnote"></b></span><button class="danger" data-reset="attendance" data-label="출석 기록">초기화</button></div>
+          <div class="reset-item"><span>😊 감정 기록만 <b id="rc-mood" class="footnote"></b></span><button class="danger" data-reset="mood" data-label="감정 기록">초기화</button></div>
+          <div class="reset-item"><span>⭐ 포인트 <b id="rc-points" class="footnote"></b></span><button class="danger" data-reset="points" data-label="포인트">초기화</button></div>
+          <div class="reset-item"><span>📖 도서 대여 기록 <b id="rc-library" class="footnote"></b></span><button class="danger" data-reset="library" data-label="도서 대여 기록">초기화</button></div>
+          <div class="reset-item"><span>🏃 체육 기록 <b id="rc-physical" class="footnote"></b></span><button class="danger" data-reset="physical" data-label="체육 기록">초기화</button></div>
+        </div>
+        <hr class="hr" />
+        <div class="reset-list">
+          <div class="reset-item"><span>🗂 <b>모든 활동 기록</b> 초기화 <span class="footnote">(학생·도서 등록은 유지)</span></span><button class="danger" data-reset="records" data-label="모든 활동 기록">전체 기록 초기화</button></div>
+          <div class="reset-item"><span>💣 <b style="color:var(--sale)">공장 초기화</b> <span class="footnote">(학생·도서·스테이션 등록까지 전부 삭제)</span></span><button class="danger" data-reset="all" data-label="공장 초기화(전체 삭제)">공장 초기화</button></div>
+        </div>
+        <div id="data-msg" class="msg"></div>
+      </div>
+    </section>
+
+    <!-- ⚙ 설정·진단 -->
+    <section id="tab-settings" class="tab-panel">
+      <div class="card">
+        <h2>⏱ 출석 점수 (정시/지각)</h2>
+        <p class="hint">
+          <b>마감시각</b> 이전(포함)에 카드를 태그하면 <b>만점</b>, 이후면 <b>지각(0점)</b>으로 기록됩니다.
+        </p>
+        <div class="toolbar">
+          <label>마감시각
+            <input type="time" id="score-cutoff" />
+          </label>
+          <label>만점(점)
+            <input type="number" id="score-full" min="0" max="1000" style="width:100px" />
+          </label>
+          <button id="score-apply">저장</button>
+        </div>
+        <div id="score-msg" class="msg"></div>
+      </div>
+
+      <div class="card">
+        <h2>⌨ 키보드(HID) 리더기 입력</h2>
+        <p class="hint">
+          카드를 대면 번호를 <b>키보드처럼 입력</b>하는 리더기(HID/키보드-웨지)를 쓸 때 켜세요.
+          입력칸 바깥에서 숫자가 입력되고 Enter로 끝나면 출석으로 처리합니다. (시리얼 CR-100과 함께 사용 가능)
+        </p>
+        <label class="quickreg__toggle">
+          <input type="checkbox" id="hid-on" /> <b>키보드(HID) 리더기 입력 사용</b>
+        </label>
+        <div id="hid-status" class="footnote" style="margin-top:8px"></div>
+      </div>
+
+      <div class="card">
+        <h2>📗 Google Sheets 동기화</h2>
+        <p class="hint">
+          출석을 구글 시트에 자동으로 올려 어디서든 보고 공유합니다.
+          <b>완전 오프라인</b>으로 쓰려면 꺼두면 되고, 켜져 있을 때만 동작합니다.
+        </p>
+        <details class="guide">
+          <summary>① 처음 한 번: 구글 시트 연결 방법 (클릭)</summary>
+          <ol>
+            <li>구글 시트 새로 만들기 → 메뉴 <b>확장 프로그램 → Apps Script</b>.</li>
+            <li>프로젝트 폴더의 <code>tools/google-apps-script.gs</code> 내용을 붙여넣고 저장.</li>
+            <li><b>배포 → 새 배포 → 웹 앱</b>, 액세스 권한 <b>"모든 사용자"</b>로 배포.</li>
+            <li>나오는 <b>웹 앱 URL</b>(…/exec)을 아래에 붙여넣고 <b>연결 테스트</b>.</li>
+          </ol>
+        </details>
+        <label>웹 앱 URL (Apps Script)
+          <input id="sheets-url" type="url" placeholder="https://script.google.com/macros/s/..../exec" autocomplete="off" />
+        </label>
+        <label class="quickreg__toggle" style="margin-top:10px">
+          <input type="checkbox" id="sheets-on" /> <b>자동 동기화 사용 (출석할 때마다 시트에 추가)</b>
+        </label>
+        <div class="toolbar" style="margin-top:12px">
+          <button id="sheets-save" class="secondary">URL 저장</button>
+          <button id="sheets-test">연결 테스트</button>
+          <button id="sheets-sync" class="primary">지금 전체 동기화 (주간 점수)</button>
+        </div>
+        <div id="sheets-msg" class="msg"></div>
+        <div id="sheets-status" class="footnote" style="margin-top:6px"></div>
+      </div>
+
+      <div class="card">
+        <h2>🌐 공공데이터 연동 <span class="footnote">(무료 · data.go.kr)</span></h2>
+        <p class="hint">
+          공휴일 자동 반영(주간 점수 정확도)과 미세먼지·날씨(체육 야외활동 판단)를 켭니다.
+          <b>꺼두면 외부 통신 없이</b> 동작합니다.
+        </p>
+        <details class="guide">
+          <summary>① 처음 한 번: 무료 인증키 발급 방법 (클릭)</summary>
+          <ol>
+            <li><b>data.go.kr</b> 회원가입 후, 아래 3개 서비스에서 <b>활용신청</b>(즉시 승인):</li>
+            <li>· <b>한국천문연구원_특일 정보</b> (공휴일)</li>
+            <li>· <b>한국환경공단 에어코리아_대기오염정보</b> (미세먼지)</li>
+            <li>· <b>기상청_단기예보 ((구)동네예보) 조회서비스</b> (날씨)</li>
+            <li>마이페이지 → <b>일반 인증키(Decoding)</b>를 복사해 아래에 붙여넣기.</li>
+          </ol>
+        </details>
+        <label>공통 인증키 <span class="footnote">(선택 · 한 키로 다 쓰면 여기에만 입력)</span>
+          <input id="pd-key" type="text" placeholder="data.go.kr 일반 인증키(Decoding)" autocomplete="off" />
+        </label>
+        <p class="footnote" style="margin:4px 0 10px">공휴일·미세먼지·날씨에 <b>각각 다른 키</b>를 쓰려면 아래에 개별로 입력하세요. (비우면 위 공통 키를 사용)</p>
+
+        <div class="pd-svc">
+          <div class="reset-item" style="border:none;padding-bottom:4px">
+            <span>📅 <b>공휴일 자동 반영</b> <span class="footnote">(주말·공휴일을 결석에서 제외)</span></span>
+            <label class="quickreg__toggle"><input type="checkbox" id="pd-holidays" /> 사용</label>
+          </div>
+          <label>공휴일 API 키 <span class="footnote">(특일정보)</span>
+            <input id="pd-holiday-key" type="text" placeholder="비우면 공통 키 사용" autocomplete="off" />
+          </label>
+        </div>
+
+        <div class="pd-svc">
+          <div class="reset-item" style="border:none;padding-bottom:4px">
+            <span>🌤 <b>미세먼지·날씨</b> <span class="footnote">(출석·체육 화면 위젯, 야외활동 판단)</span></span>
+            <label class="quickreg__toggle"><input type="checkbox" id="pd-air" /> 사용</label>
+          </div>
+          <label>미세먼지 API 키 <span class="footnote">(에어코리아)</span>
+            <input id="pd-air-key" type="text" placeholder="비우면 공통 키 사용" autocomplete="off" />
+          </label>
+          <label>날씨 API 키 <span class="footnote">(기상청 단기예보)</span>
+            <input id="pd-weather-key" type="text" placeholder="비우면 공통 키 사용" autocomplete="off" />
+          </label>
+          <div class="toolbar" style="margin-top:10px">
+            <label>시/도 <input id="pd-sido" placeholder="서울" style="width:90px" /></label>
+            <label>격자 nx <input id="pd-nx" type="number" placeholder="60" style="width:80px" /></label>
+            <label>격자 ny <input id="pd-ny" type="number" placeholder="127" style="width:80px" /></label>
+            <span class="footnote">기상청 격자값 (서울=60,127 · 모르면 그대로)</span>
+          </div>
+        </div>
+        <div class="toolbar" style="margin-top:10px">
+          <button id="pd-save" class="secondary">저장</button>
+          <button id="pd-test">지금 조회 (테스트)</button>
+        </div>
+        <div id="pd-msg" class="msg"></div>
+        <div id="pd-preview" class="footnote" style="margin-top:6px"></div>
+      </div>
+
+      <div class="card">
+        <h2>🏫 NEIS 학교 연동 <span class="footnote">(무료 · 급식·학사일정)</span></h2>
+        <p class="hint">
+          오늘 <b>급식 식단·알레르기</b>를 실시간 출석 화면에 표시하고, <b>학사일정(휴업일·방학)</b>을
+          주간 점수의 결석 계산에서 자동 제외합니다.
+        </p>
+        <details class="guide">
+          <summary>① 처음 한 번: NEIS 인증키 발급 (클릭)</summary>
+          <ol>
+            <li><b>open.neis.go.kr</b>(교육정보 개방 포털) 회원가입 → <b>인증키 신청</b>(즉시 발급).</li>
+            <li>발급받은 인증키를 아래에 붙여넣기.</li>
+            <li>학교명을 검색해 <b>우리 학교를 선택</b>하면 끝(교육청·학교 코드 자동 입력).</li>
+          </ol>
+        </details>
+        <label>NEIS 인증키
+          <input id="neis-key" type="text" placeholder="발급받은 인증키" autocomplete="off" />
+        </label>
+        <div class="toolbar" style="margin-top:10px">
+          <label>학교명 검색 <input id="neis-school" placeholder="예: 서울가락초등학교" /></label>
+          <button id="neis-search-btn" class="secondary">학교 검색</button>
+        </div>
+        <div class="toolbar" style="margin-top:8px">
+          <label style="flex:1">검색 결과
+            <select id="neis-result"></select>
+          </label>
+          <button id="neis-pick">이 학교로 설정</button>
+        </div>
+        <div id="neis-current" class="footnote" style="margin-top:6px"></div>
+        <input id="neis-atpt" type="hidden" />
+        <input id="neis-code" type="hidden" />
+        <input id="neis-name" type="hidden" />
+
+        <div class="reset-item" style="margin-top:12px">
+          <span>🍱 <b>오늘 급식 표시</b> <span class="footnote">(실시간 출석 화면)</span></span>
+          <label class="quickreg__toggle"><input type="checkbox" id="neis-meal-on" /> 사용</label>
+        </div>
+        <div class="reset-item">
+          <span>📆 <b>학사일정 반영</b> <span class="footnote">(휴업일·방학을 결석에서 제외)</span></span>
+          <label class="quickreg__toggle"><input type="checkbox" id="neis-sched-on" /> 사용</label>
+        </div>
+
+        <div class="toolbar" style="margin-top:10px">
+          <button id="neis-save" class="secondary">저장</button>
+          <button id="neis-test">오늘 급식 조회 (테스트)</button>
+        </div>
+        <div id="neis-msg" class="msg"></div>
+        <div id="neis-preview" class="footnote" style="margin-top:6px"></div>
+      </div>
+
+      <div class="card">
+        <h2>리더기 연결 상태</h2>
+        <p id="set-conn" class="hint">확인 중...</p>
+      </div>
+
+      <div class="card">
+        <h2>리더기 포트 선택</h2>
+        <p class="hint">
+          카드를 태그해도 반응이 없으면, 아래에서 <b>리더기(CR-100 / Silicon Labs CP210x)</b> 포트를 직접 선택하세요.
+          자동 탐지가 잘못된 포트(예: 블루투스)에 연결됐을 때 유용합니다.
+        </p>
+        <div class="toolbar" style="margin-bottom:14px">
+          <label style="flex-direction:row;align-items:center;gap:8px;text-transform:none">
+            <input type="checkbox" id="set-auto" style="width:18px;height:18px" /> 자동 탐지 사용
+          </label>
+          <button id="ports-refresh" class="secondary">포트 새로고침</button>
+        </div>
+        <div id="set-port-wrap" class="toolbar">
+          <label>포트
+            <select id="set-port"></select>
+          </label>
+          <label>통신 속도(baud)
+            <select id="set-baud">
+              <option>9600</option><option>19200</option><option>38400</option>
+              <option>57600</option><option>115200</option>
+            </select>
+          </label>
+          <button id="set-apply">적용 &amp; 연결</button>
+        </div>
+        <div id="set-msg" class="msg"></div>
+      </div>
+
+      <div class="card">
+        <h2>실시간 데이터 진단</h2>
+        <p class="hint">
+          리더기에 카드를 태그해 보세요. 아래에 데이터가 나타나면 <b>연결·통신이 정상</b>입니다.
+          연결됐다고 표시되는데도 카드를 태그할 때 아무것도 안 나오면, 위에서 다른 포트를 선택해 보세요.
+        </p>
+        <div id="raw-log" class="rawlog"><div class="rawlog__empty">카드를 태그하면 여기에 표시됩니다…</div></div>
+      </div>
+    </section>
+
+    <footer>
+      <button id="sim-btn" class="ghost">테스트: 가짜 카드 태그</button>
+      <span class="footnote">리더기 없이 동작을 확인할 때 사용</span>
+    </footer>
+
+    <!-- 최고 기록 축하 오버레이 -->
+    <div id="celebrate-overlay" class="overlay">
+      <div class="overlay__box">
+        <div id="celebrate-emoji" style="font-size:90px">🎉</div>
+        <div class="overlay__title" id="celebrate-title">신기록!</div>
+        <div class="overlay__name" id="celebrate-sub"></div>
+      </div>
+    </div>
+
+    <!-- 오늘의 기분 선택 (감정 출석부) -->
+    <div id="mood-overlay" class="overlay">
+      <div class="overlay__box">
+        <div class="overlay__name" id="mood-who">○○○님</div>
+        <div class="overlay__title">오늘 기분이 어때요?</div>
+        <div id="mood-buttons" class="mood-buttons"></div>
+        <div class="overlay__skip" id="mood-skip">건너뛰기</div>
+      </div>
+    </div>
+
+    <!-- 출석·감정 체크 후: 오늘의 정보(급식·학사일정·날씨·미세먼지) -->
+    <div id="today-overlay" class="overlay">
+      <div class="overlay__box overlay__box--today">
+        <div class="overlay__title">📅 오늘은 이런 날!</div>
+        <div id="today-content" class="today-content"></div>
+        <div class="overlay__skip" id="today-close">닫기</div>
+      </div>
+    </div>
+
+    <!-- 반납 후 별점 & 한 줄 평 (개인 독서 기록장) -->
+    <div id="review-overlay" class="overlay">
+      <div class="overlay__box">
+        <div class="overlay__name" id="review-who">○○○님</div>
+        <div class="overlay__title" id="review-book">『책 제목』 어땠어요?</div>
+        <div id="stars" class="stars"></div>
+        <input id="review-text" class="review-input" maxlength="60" placeholder="한 줄 평을 남겨보세요 (선택)" />
+        <div class="review-actions">
+          <button id="review-save">기록하기</button>
+          <button id="review-skip" class="ghost">건너뛰기</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>

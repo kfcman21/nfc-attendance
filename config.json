@@ -1,0 +1,36 @@
+{
+  "serial": {
+    "_comment": "autoDetect=true면 VID:PID로 리더기를 자동 탐지(USB 포트 바뀌어도 OK). 못 찾으면 port 사용.",
+    "autoDetect": true,
+    "vendorId": "10C4",
+    "productId": "EA60",
+    "port": "COM9",
+    "baudRate": 9600
+  },
+  "parser": {
+    "_comment": "CR-100 확인 결과: STX(0x02) + 카드번호 + CRLF + ETX(0x03) 프레임",
+    "mode": "stx-etx",
+    "_mode_options": "stx-etx = STX..ETX 프레임 / line = 줄바꿈 텍스트 / raw-hex = 원시 16진수",
+    "startByte": 2,
+    "endByte": 3,
+    "trim": true,
+    "stripNonAlphanumeric": true,
+    "delimiter": "\r\n"
+  },
+  "attendance": {
+    "_comment": "같은 카드를 이 시간(초) 안에 다시 태그하면 중복으로 무시 (연속 인식 방지)",
+    "debounceSeconds": 5
+  },
+  "scoring": {
+    "_comment": "onTimeBy(HH:MM) 시각 이전(포함)에 태그하면 만점(fullScore), 이후면 지각(0점). 설정 탭에서 변경 가능.",
+    "fullScore": 10,
+    "onTimeBy": "09:00"
+  },
+  "reading": {
+    "_comment": "학급 독서 온도계의 목표 권수 (이 값을 채우면 100%)",
+    "goalBooks": 100
+  },
+  "server": {
+    "port": 3000
+  }
+}
