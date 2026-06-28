@@ -35,6 +35,9 @@
   },
   "neis": {
     "key": "7abb0528763a4c4199f946ae4421f066",
+    "atptCode": "B10",
+    "schoolCode": "7041129",
+    "schoolName": "서울문백초등학교",
     "meal": {
       "enabled": true
     },
