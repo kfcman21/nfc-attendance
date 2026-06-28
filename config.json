@@ -32,5 +32,14 @@
   },
   "server": {
     "port": 3000
+  },
+  "neis": {
+    "key": "7abb0528763a4c4199f946ae4421f066",
+    "meal": {
+      "enabled": true
+    },
+    "schedule": {
+      "enabled": true
+    }
   }
 }
