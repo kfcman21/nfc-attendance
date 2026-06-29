@@ -5,7 +5,7 @@ import { app, BrowserWindow, dialog } from 'electron';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import http from 'node:http';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -15,6 +15,18 @@ const URL = `http://127.0.0.1:${PORT}`;
 
 let serverProc = null;
 let win = null;
+
+// 개발자도구 자동 표시 여부: 설정·진단 탭에서 저장한 settings.json(ui.devtools) 우선, 없으면 config.json 기본값.
+function devtoolsEnabled() {
+  try {
+    const p = join(app.getPath('userData'), 'settings.json');
+    if (existsSync(p)) {
+      const s = JSON.parse(readFileSync(p, 'utf8'));
+      if (s.ui && typeof s.ui.devtools === 'boolean') return s.ui.devtools;
+    }
+  } catch {}
+  return !!(config.ui && config.ui.devtools);
+}
 
 function startServer() {
   // Electron 내장 Node로 서버 실행 (ELECTRON_RUN_AS_NODE).
@@ -101,7 +113,7 @@ function showSplash() {
     await waitForServer();
     if (win) {
       win.loadURL(URL);
-      win.webContents.openDevTools(); // 개발자 도구 창 강제 열기 (디버깅용)
+      if (devtoolsEnabled()) win.webContents.openDevTools(); // 설정·진단에서 켰을 때만 개발자도구 열기
     }
   } catch (e) {
     dialog.showErrorBox('시작 실패', `서버를 시작하지 못했습니다.\n\n${e.message}`);

@@ -34,6 +34,8 @@ config.publicData.airweather = {
 config.neis = { key: '', atptCode: '', schoolCode: '', schoolName: '', ...(config.neis || {}) };
 config.neis.meal = { enabled: false, ...(config.neis.meal || {}) };
 config.neis.schedule = { enabled: false, ...(config.neis.schedule || {}) };
+// 화면·디버그: Electron 개발자도구(DevTools) 자동 표시 여부 등. (electron-main.mjs도 settings.json에서 읽음)
+config.ui = { devtools: false, ...(config.ui || {}) };
 try {
   if (existsSync(SETTINGS_PATH)) {
     const saved = JSON.parse(readFileSync(SETTINGS_PATH, 'utf8'));
@@ -53,6 +55,7 @@ try {
       if (saved.neis.meal) config.neis.meal = { ...config.neis.meal, ...saved.neis.meal };
       if (saved.neis.schedule) config.neis.schedule = { ...config.neis.schedule, ...saved.neis.schedule };
     }
+    if (saved.ui) config.ui = { ...config.ui, ...saved.ui };
   }
 } catch {}
 
@@ -131,11 +134,13 @@ async function fetchJson(url, timeoutMs = 8000, retries = 1) {
     const timer = setTimeout(() => ctrl.abort(), timeoutMs);
     try {
       // 일부 게이트웨이는 빈 User-Agent를 403으로 막으므로 브라우저 UA를 보낸다.
+      // 주의: NEIS(open.neis.go.kr) 게이트웨이는 'Accept: application/json'을 받으면
+      // HTTP 500(HTML 오류 페이지)을 돌려준다. '*/*'로 보내야 정상 응답한다. (Type=json 파라미터로 JSON 지정)
       const res = await fetch(url, {
         signal: ctrl.signal,
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) NFC-Attendance',
-          Accept: 'application/json',
+          Accept: '*/*',
         },
       });
       const text = await res.text();
@@ -1320,6 +1325,49 @@ app.get('/api/neis/meal', async (req, res) => {
   } catch (e) {
     res.status(502).json({ error: e.message });
   }
+});
+
+// 학사일정 위젯용: 오늘 학사일정 + 다가오는 행사(향후 ~45일). 토요휴업일 등 주말성 휴업은 다가오는 목록에서 제외.
+app.get('/api/neis/schedule', async (req, res) => {
+  const n = config.neis;
+  if (!n.key || !n.atptCode || !n.schoolCode)
+    return res.status(400).json({ error: 'NEIS 인증키·학교 설정이 필요합니다.' });
+  const today = new Date().toLocaleDateString('sv-SE');
+  const endDt = new Date();
+  endDt.setDate(endDt.getDate() + 45);
+  const to = endDt.toLocaleDateString('sv-SE');
+  try {
+    const sch = await fetchNeisSchedule(today, to);
+    const todayName = sch.off[today] || sch.events[today] || null;
+    // 같은 이름(예: 여러 날 이어지는 '여름방학')은 첫 날짜만 남겨 중복 제거
+    const upcoming = [];
+    const seenNames = new Set();
+    for (const d of Object.keys(sch.events).filter((d) => d > today && !/토요휴업/.test(sch.events[d])).sort()) {
+      const name = sch.events[d];
+      if (seenNames.has(name)) continue;
+      seenNames.add(name);
+      upcoming.push({ date: d, name });
+      if (upcoming.length >= 5) break;
+    }
+    res.json({ today: todayName, upcoming });
+  } catch (e) {
+    res.status(502).json({ error: e.message });
+  }
+});
+
+// ===== 🛠 화면·디버그 설정 (개발자도구 자동 표시 등) =====
+app.get('/api/ui-config', (req, res) => {
+  res.json({ devtools: !!config.ui.devtools });
+});
+app.post('/api/ui-config', (req, res) => {
+  const b = req.body || {};
+  if (b.devtools !== undefined) config.ui.devtools = !!b.devtools;
+  try {
+    saveSettings({ ui: config.ui });
+  } catch (e) {
+    console.error('UI 설정 저장 실패:', e.message);
+  }
+  res.json({ ok: true, devtools: config.ui.devtools });
 });
 
 // ===== 📅 오늘 정보 통합 (출석 후 학생에게 보여줄 급식·학사일정·날씨·미세먼지) =====

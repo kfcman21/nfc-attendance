@@ -55,6 +55,7 @@
     <section id="tab-live" class="tab-panel active">
       <div class="airwx" data-airwx hidden></div>
       <div class="neis-meal" id="neis-meal" hidden></div>
+      <div class="neis-sched" id="neis-sched" hidden></div>
       <div id="bigcard" class="bigcard bigcard--idle">
         <div class="bigcard__hint">카드를 리더기에 대주세요</div>
       </div>
@@ -730,6 +731,16 @@
           연결됐다고 표시되는데도 카드를 태그할 때 아무것도 안 나오면, 위에서 다른 포트를 선택해 보세요.
         </p>
         <div id="raw-log" class="rawlog"><div class="rawlog__empty">카드를 태그하면 여기에 표시됩니다…</div></div>
+      </div>
+
+      <div class="card">
+        <h2>🛠 화면·디버그</h2>
+        <p class="hint">문제 진단이 필요할 때만 사용하세요. 일반 사용 시에는 꺼두는 것을 권장합니다.</p>
+        <div class="reset-item">
+          <span>🔧 <b>개발자도구 자동 표시</b> <span class="footnote">(프로그램 시작 시 DevTools 창 열기 · 다음 실행부터 적용)</span></span>
+          <label class="quickreg__toggle"><input type="checkbox" id="ui-devtools-on" /> 사용</label>
+        </div>
+        <div id="ui-msg" class="msg" style="margin-top:8px"></div>
       </div>
     </section>
 

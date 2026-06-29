@@ -549,6 +549,15 @@ footer {
 .neis-meal__menu { font-size: 14px; color: var(--charcoal); line-height: 1.6; }
 .neis-meal__allergy { font-size: 12px; color: var(--mute); margin-top: 4px; }
 
+/* ===== 📆 학사일정 위젯 ===== */
+.neis-sched {
+  border: 1px solid var(--hairline); background: var(--cloud);
+  padding: 10px 14px; margin-bottom: 14px;
+}
+.neis-sched__title { font-weight: 700; color: var(--ink); margin-bottom: 4px; }
+.neis-sched__today { font-size: 14px; color: var(--charcoal); line-height: 1.6; }
+.neis-sched__list { font-size: 13px; color: var(--mute); margin-top: 4px; line-height: 1.6; }
+
 /* ===== 📅 출석 후 오늘의 정보 오버레이 ===== */
 .overlay__box--today { max-width: 560px; width: 90%; text-align: left; }
 .today-content { margin: 18px 0 8px; display: flex; flex-direction: column; gap: 12px; }
@@ -570,7 +579,7 @@ footer {
 .bigcard { border-radius: var(--radius-lg); }
 .stats { border-radius: var(--radius); overflow: hidden; }
 .taplist li { border-radius: var(--radius-sm); }
-.airwx, .neis-meal, .pd-svc, .quickreg, .guide, .rawlog,
+.airwx, .neis-meal, .neis-sched, .pd-svc, .quickreg, .guide, .rawlog,
 .datacell, .ti-row, .wk-table-wrap, .overlay__box { border-radius: var(--radius-sm); }
 .overlay__box { border-radius: var(--radius); }
 

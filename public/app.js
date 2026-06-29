@@ -1179,6 +1179,7 @@ async function loadSettings() {
   await loadSheetsConfig();
   await loadPublicConfig();
   await loadNeisConfig();
+  await loadUiConfig();
   await loadPorts(cfg.port);
 }
 
@@ -1462,13 +1463,49 @@ $('#neis-save').addEventListener('click', async () => {
   showNeisMsg(ok ? 'ok' : 'err', ok ? '저장했습니다.' : '저장 실패');
   neisMealCache = null;
   loadNeisMeal();
+  neisSchedCache = null;
+  loadNeisSchedule();
+});
+
+// ---- 🛠 화면·디버그 (개발자도구 자동 표시) ----
+async function loadUiConfig() {
+  try {
+    const cfg = await api('/api/ui-config');
+    $('#ui-devtools-on').checked = !!cfg.devtools;
+  } catch {}
+}
+$('#ui-devtools-on')?.addEventListener('change', async () => {
+  const el = $('#ui-msg');
+  try {
+    const res = await fetch('/api/ui-config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ devtools: $('#ui-devtools-on').checked }),
+    });
+    const ok = res.ok;
+    if (el) {
+      el.className = 'msg ok';
+      el.textContent = ok
+        ? `개발자도구 자동 표시를 ${$('#ui-devtools-on').checked ? '켰' : '껐'}습니다. (다음 실행부터 적용)`
+        : '저장 실패';
+    }
+  } catch {
+    if (el) {
+      el.className = 'msg err';
+      el.textContent = '저장 실패';
+    }
+  }
 });
 $('#neis-meal-on').addEventListener('change', async () => {
   await saveNeisConfig();
   neisMealCache = null;
   loadNeisMeal();
 });
-$('#neis-sched-on').addEventListener('change', () => saveNeisConfig());
+$('#neis-sched-on').addEventListener('change', async () => {
+  await saveNeisConfig();
+  neisSchedCache = null;
+  loadNeisSchedule();
+});
 $('#neis-test').addEventListener('click', async () => {
   await saveNeisConfig();
   showNeisMsg('', '급식 조회 중...');
@@ -1533,6 +1570,60 @@ function renderNeisMeal(d) {
   el.innerHTML =
     `<div class="neis-meal__title">🍱 오늘 급식 <span class="footnote">${lunch.type}${lunch.calorie ? ' · ' + lunch.calorie : ''}</span></div>` +
     `<div class="neis-meal__menu">${menu}</div>${allergy}`;
+}
+
+// 실시간 출석 화면의 학사일정 위젯 (오늘 + 다가오는 행사)
+let neisSchedCache = null;
+let neisSchedAt = 0;
+async function loadNeisSchedule(force = false) {
+  const el = $('#neis-sched');
+  if (!el) return;
+  let cfg;
+  try {
+    cfg = await api('/api/neis-config');
+  } catch {
+    return;
+  }
+  if (!cfg.schedule?.enabled || !cfg.hasKey || !cfg.schoolCode) {
+    el.hidden = true;
+    return;
+  }
+  if (!force && neisSchedCache && Date.now() - neisSchedAt < 1800000) {
+    renderNeisSchedule(neisSchedCache);
+    return;
+  }
+  try {
+    const d = await api('/api/neis/schedule');
+    if (d.error) {
+      el.hidden = true;
+      return;
+    }
+    neisSchedCache = d;
+    neisSchedAt = Date.now();
+    renderNeisSchedule(d);
+  } catch {
+    el.hidden = true;
+  }
+}
+function renderNeisSchedule(d) {
+  const el = $('#neis-sched');
+  const today = d.today ? `<div class="neis-sched__today">📌 오늘: ${d.today}</div>` : '';
+  const upcoming = (d.upcoming || []).length
+    ? `<div class="neis-sched__list">${d.upcoming
+        .map((e) => `${e.date.slice(5).replace('-', '/')} ${e.name}`)
+        .join(' · ')}</div>`
+    : '';
+  if (!today && !upcoming) {
+    // 오늘도 행사 없고 다가오는 행사도 없으면 숨김
+    el.hidden = true;
+    return;
+  }
+  el.hidden = false;
+  el.innerHTML =
+    `<div class="neis-sched__title">📆 학사일정${d.today ? '' : ' <span class="footnote">다가오는 일정</span>'}</div>` +
+    today +
+    (today && upcoming ? '<div class="neis-sched__list" style="margin-top:2px">다가오는 일정</div>' : '') +
+    upcoming;
 }
 
 // ---- 출석 점수(정시/지각) 설정 ----
@@ -1874,3 +1965,4 @@ connectSSE();
 loadAirWeather(); // 미세먼지·날씨 위젯 (사용 설정 시에만 표시)
 setInterval(() => loadAirWeather(true), 600000); // 10분마다 갱신
 loadNeisMeal(); // 오늘 급식 위젯 (사용 설정 시에만 표시)
+loadNeisSchedule(); // 학사일정 위젯 (사용 설정 시에만 표시)

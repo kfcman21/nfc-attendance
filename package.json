@@ -1,6 +1,6 @@
 {
   "name": "nfc-attendance",
-  "version": "1.7.0",
+  "version": "1.8.1",
   "description": "CR-100 NFC 리더기 학생 출석 프로그램",
   "type": "module",
   "main": "electron-main.mjs",
