@@ -6,7 +6,8 @@
     <title>학생 출석 - CR-100</title>
 
     <!-- PWA (크롬북 설치형 웹앱) -->
-    <link rel="manifest" href="manifest.webmanifest" />
+    <!-- crossorigin: 기본인증(또는 쿠키) 뒤에 있을 때 매니페스트·아이콘 요청에도 인증정보를 함께 보내 PWA 설치가 되도록 함 -->
+    <link rel="manifest" href="manifest.webmanifest" crossorigin="use-credentials" />
     <meta name="theme-color" content="#0064E0" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
