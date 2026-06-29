@@ -1,0 +1,17 @@
+{
+  "name": "NFC 학생 출석",
+  "short_name": "학생출석",
+  "description": "CR-100 / HID 리더기로 카드를 태그해 출석을 기록하는 학생 출석 프로그램 (크롬북 PWA)",
+  "lang": "ko",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#ffffff",
+  "theme_color": "#0064E0",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

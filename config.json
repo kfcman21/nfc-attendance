@@ -33,6 +33,13 @@
   "server": {
     "port": 3000
   },
+  "https": {
+    "_comment": "크롬북 등에서 PWA 설치(보안 컨텍스트)하려면 HTTPS 필요. cert/key에 신뢰된 인증서 파일 경로를 넣으면 설치 버튼이 바로 뜸. 비워두면 LAN IP를 포함한 자체 서명 인증서를 자동 생성(첫 접속 시 경고 1회 허용). HTTP(평문)도 함께 제공.",
+    "enabled": true,
+    "port": 3443,
+    "cert": "",
+    "key": ""
+  },
   "neis": {
     "key": "7abb0528763a4c4199f946ae4421f066",
     "atptCode": "B10",

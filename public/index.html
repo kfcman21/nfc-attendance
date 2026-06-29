@@ -2,8 +2,19 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>학생 출석 - CR-100</title>
+
+    <!-- PWA (크롬북 설치형 웹앱) -->
+    <link rel="manifest" href="manifest.webmanifest" />
+    <meta name="theme-color" content="#0064E0" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="학생출석" />
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="icons/icon-192.png" />
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -792,5 +803,13 @@
     </div>
 
     <script src="app.js"></script>
+    <!-- PWA 서비스워커 등록 (HTTPS 또는 localhost 등 보안 컨텍스트에서만 동작) -->
+    <script>
+      if ('serviceWorker' in navigator && window.isSecureContext) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('sw.js').catch((e) => console.warn('SW 등록 실패:', e.message));
+        });
+      }
+    </script>
   </body>
 </html>

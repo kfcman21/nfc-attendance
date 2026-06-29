@@ -1,6 +1,6 @@
 {
   "name": "nfc-attendance",
-  "version": "1.8.1",
+  "version": "1.10.0",
   "description": "CR-100 NFC 리더기 학생 출석 프로그램",
   "type": "module",
   "main": "electron-main.mjs",
@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "express": "^4.21.2",
+    "selfsigned": "^5.5.0",
     "serialport": "^12.0.0"
   },
   "devDependencies": {
@@ -37,7 +38,10 @@
     ],
     "win": {
       "icon": "build/icon.ico",
-      "target": ["nsis", "portable"]
+      "target": [
+        "nsis",
+        "portable"
+      ]
     },
     "portable": {
       "artifactName": "NFC학생출석-${version}-portable.exe"

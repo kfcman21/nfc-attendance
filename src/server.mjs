@@ -3,6 +3,9 @@ import express from 'express';
 import { readFileSync, writeFileSync, existsSync, unlinkSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { networkInterfaces } from 'node:os';
+import { createServer as createHttpsServer } from 'node:https';
+import selfsigned from 'selfsigned';
 import { SerialPort } from 'serialport';
 import { Reader } from './reader.mjs';
 import * as db from './db.mjs';
@@ -36,6 +39,9 @@ config.neis.meal = { enabled: false, ...(config.neis.meal || {}) };
 config.neis.schedule = { enabled: false, ...(config.neis.schedule || {}) };
 // 화면·디버그: Electron 개발자도구(DevTools) 자동 표시 여부 등. (electron-main.mjs도 settings.json에서 읽음)
 config.ui = { devtools: false, ...(config.ui || {}) };
+// HTTPS: 크롬북 등에서 PWA 설치(보안 컨텍스트)하려면 HTTPS가 필요. cert/key를 지정하면 그 인증서를,
+// 없으면 LAN IP를 포함한 자체 서명 인증서를 자동 생성한다. HTTP(평문)도 그대로 함께 제공된다.
+config.https = { enabled: true, port: 3443, cert: '', key: '', ...(config.https || {}) };
 try {
   if (existsSync(SETTINGS_PATH)) {
     const saved = JSON.parse(readFileSync(SETTINGS_PATH, 'utf8'));
@@ -56,6 +62,7 @@ try {
       if (saved.neis.schedule) config.neis.schedule = { ...config.neis.schedule, ...saved.neis.schedule };
     }
     if (saved.ui) config.ui = { ...config.ui, ...saved.ui };
+    if (saved.https) config.https = { ...config.https, ...saved.https };
   }
 } catch {}
 
@@ -348,7 +355,16 @@ function computeScore(date = new Date()) {
 
 const app = express();
 app.use(express.json());
-app.use(express.static(join(__dirname, '..', 'public')));
+app.use(
+  express.static(join(__dirname, '..', 'public'), {
+    setHeaders(res, path) {
+      // PWA 매니페스트 MIME 타입 보정
+      if (path.endsWith('.webmanifest')) res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8');
+      // 서비스워커는 항상 최신을 받아야 업데이트가 반영됨 (캐시 금지)
+      if (path.endsWith('sw.js')) res.setHeader('Cache-Control', 'no-cache');
+    },
+  })
+);
 
 // ---- 실시간 이벤트 (Server-Sent Events) ----
 const clients = new Set();
@@ -1459,8 +1475,74 @@ app.post('/api/simulate', (req, res) => {
 });
 
 const PORT = process.env.NFC_PORT || config.server?.port || 3000;
+// 같은 네트워크의 크롬북 등에서 접속할 수 있도록 LAN IPv4 주소를 찾는다.
+function lanAddresses() {
+  const out = [];
+  for (const list of Object.values(networkInterfaces())) {
+    for (const ni of list || []) {
+      if (ni.family === 'IPv4' && !ni.internal) out.push(ni.address);
+    }
+  }
+  return out;
+}
+
+// HTTPS 인증서: ① config.https.cert/key가 지정되면 그 파일을 사용(권장: 신뢰된 인증서면 설치 버튼 표시).
+// ② 없으면 LAN IP를 SAN에 넣은 자체 서명 인증서를 DATA_DIR에 만들어 재사용한다(IP가 바뀌면 재발급).
+const TLS_CERT_PATH = join(DATA_DIR, 'tls-cert.pem');
+const TLS_KEY_PATH = join(DATA_DIR, 'tls-key.pem');
+const TLS_SAN_PATH = join(DATA_DIR, 'tls-sans.json');
+async function tlsCredentials() {
+  const h = config.https;
+  if (h.cert && h.key && existsSync(h.cert) && existsSync(h.key)) {
+    return { cert: readFileSync(h.cert), key: readFileSync(h.key), selfSigned: false };
+  }
+  const sans = ['localhost', '127.0.0.1', ...lanAddresses()];
+  if (existsSync(TLS_CERT_PATH) && existsSync(TLS_KEY_PATH) && existsSync(TLS_SAN_PATH)) {
+    try {
+      const prev = JSON.parse(readFileSync(TLS_SAN_PATH, 'utf8'));
+      if (Array.isArray(prev) && sans.every((s) => prev.includes(s)))
+        return { cert: readFileSync(TLS_CERT_PATH), key: readFileSync(TLS_KEY_PATH), selfSigned: true };
+    } catch {}
+  }
+  // selfsigned v5: async, SAN은 extensions(subjectAltName)로 지정 (지정 시 기본 확장은 직접 포함해야 함)
+  const altNames = sans.map((s) => (/^[0-9.]+$/.test(s) ? { type: 7, ip: s } : { type: 2, value: s }));
+  const pems = await selfsigned.generate([{ name: 'commonName', value: 'NFC Attendance' }], {
+    days: 3650,
+    keySize: 2048,
+    algorithm: 'sha256',
+    extensions: [
+      { name: 'basicConstraints', cA: false, critical: true },
+      { name: 'keyUsage', digitalSignature: true, keyEncipherment: true, critical: true },
+      { name: 'extKeyUsage', serverAuth: true, clientAuth: true },
+      { name: 'subjectAltName', altNames },
+    ],
+  });
+  writeFileSync(TLS_CERT_PATH, pems.cert);
+  writeFileSync(TLS_KEY_PATH, pems.private);
+  writeFileSync(TLS_SAN_PATH, JSON.stringify(sans));
+  return { cert: pems.cert, key: pems.private, selfSigned: true };
+}
+
 app.listen(PORT, () => {
   console.log(`\n=== CR-100 출석 프로그램 실행 중 ===`);
-  console.log(`브라우저에서 열기:  http://localhost:${PORT}`);
+  console.log(`이 PC에서:          http://localhost:${PORT}`);
+  for (const ip of lanAddresses()) console.log(`같은 네트워크(크롬북): http://${ip}:${PORT}`);
   console.log(`리더기 포트:        ${config.serial.port} @ ${config.serial.baudRate} bps\n`);
 });
+
+// HTTPS 리스너 (크롬북 PWA 설치용 보안 컨텍스트 제공)
+if (config.https.enabled) {
+  (async () => {
+    const { cert, key, selfSigned } = await tlsCredentials();
+    createHttpsServer({ cert, key }, app)
+      .listen(config.https.port, () => {
+        console.log(`HTTPS(크롬북 설치용): https://localhost:${config.https.port}`);
+        for (const ip of lanAddresses())
+          console.log(`  같은 네트워크:      https://${ip}:${config.https.port}`);
+        if (selfSigned)
+          console.log(`  ※ 자체 서명 인증서 — 크롬북 첫 접속 시 보안 경고를 한 번 허용하세요.\n`);
+        else console.log('');
+      })
+      .on('error', (e) => console.error('[HTTPS] 시작 실패:', e.message));
+  })().catch((e) => console.error('[HTTPS] 인증서 준비 실패:', e.message));
+}
