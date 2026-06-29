@@ -1,0 +1,30 @@
+# NFC 학생 출석 서버 (kfcman.link/attend) — systemd 유닛
+# 설치: 이 파일을 /etc/systemd/system/nfc-attend.service 로 복사 후
+#   sudo systemctl daemon-reload && sudo systemctl enable --now nfc-attend
+[Unit]
+Description=NFC 학생 출석 서버 (kfcman.link/attend)
+After=network.target
+
+[Service]
+Type=simple
+# 코드를 배치한 경로 (src/server.mjs, node_modules 가 있는 곳)
+WorkingDirectory=/var/www/nfc-attendance
+# Node 22.5+ 필요 (node:sqlite 내장 모듈 사용). `which node` 결과에 맞게 경로 조정.
+ExecStart=/usr/bin/node src/server.mjs
+
+# 내부 포트(Nginx가 이 포트로 프록시) — nginx-attend.conf 의 3100 과 일치해야 함
+Environment=NFC_PORT=3100
+# 출석 DB(SQLite)를 영구 경로에 저장 (재배포해도 데이터 유지). 디렉터리는 미리 생성하고 소유권 부여.
+Environment=NFC_DATA_DIR=/var/lib/nfc-attendance
+# TLS는 Nginx가 처리하므로 앱 자체 HTTPS는 끔
+Environment=NFC_DISABLE_HTTPS=1
+# 서버엔 리더기가 없음 — 시리얼 스캔 비활성화(HID/원격 입력만 사용)
+Environment=NFC_DISABLE_SERIAL=1
+
+Restart=always
+RestartSec=3
+User=www-data
+Group=www-data
+
+[Install]
+WantedBy=multi-user.target

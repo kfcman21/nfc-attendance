@@ -42,6 +42,8 @@ config.ui = { devtools: false, ...(config.ui || {}) };
 // HTTPS: 크롬북 등에서 PWA 설치(보안 컨텍스트)하려면 HTTPS가 필요. cert/key를 지정하면 그 인증서를,
 // 없으면 LAN IP를 포함한 자체 서명 인증서를 자동 생성한다. HTTP(평문)도 그대로 함께 제공된다.
 config.https = { enabled: true, port: 3443, cert: '', key: '', ...(config.https || {}) };
+// 리버스 프록시(Nginx 등) 뒤에 둘 때는 TLS를 프록시가 처리하므로 NFC_DISABLE_HTTPS=1로 앱 HTTPS를 끈다.
+if (process.env.NFC_DISABLE_HTTPS === '1') config.https.enabled = false;
 try {
   if (existsSync(SETTINGS_PATH)) {
     const saved = JSON.parse(readFileSync(SETTINGS_PATH, 'utf8'));
@@ -615,7 +617,10 @@ reader.on('card', (uid) => {
   syncAttendanceRow(student, record, status, score); // Google Sheets 자동 추가(켜진 경우)
 });
 
-reader.start();
+// 클라우드/서버 배포 등 리더기가 없는 환경에서는 NFC_DISABLE_SERIAL=1로 시리얼 스캔을 끈다(HID·원격 입력만 사용).
+if (process.env.NFC_DISABLE_SERIAL === '1')
+  console.log('[리더기] NFC_DISABLE_SERIAL=1 — 시리얼 스캔 비활성화 (HID/원격 입력만 사용)');
+else reader.start();
 
 // ---- API: 학생 ----
 app.get('/api/students', (req, res) => res.json(db.listStudents()));

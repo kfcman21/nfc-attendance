@@ -1,5 +1,30 @@
 // 프론트엔드 로직
 const $ = (sel) => document.querySelector(sel);
+
+// ===== 서브경로 배포 지원 (예: kfcman.link/attend) =====
+// app.js가 로드된 위치에서 앱 베이스 경로를 구한다. 루트 배포면 '/', 서브경로면 '/attend/'.
+const APP_BASE = (() => {
+  try {
+    const src = document.currentScript && document.currentScript.src;
+    return new URL('.', src || document.baseURI).pathname;
+  } catch {
+    return '/';
+  }
+})();
+// 절대경로('/api/...')에 앱 베이스를 붙여 서브경로 뒤에서도 동작하게 한다. (루트 배포면 그대로)
+const apiUrl = (u) => (typeof u === 'string' && u.startsWith('/') ? APP_BASE.replace(/\/$/, '') + u : u);
+// fetch·EventSource를 감싸 모든 '/api/...' 호출을 자동 보정 — 개별 호출부 수정 불필요.
+const _origFetch = window.fetch.bind(window);
+window.fetch = (input, init) => _origFetch(typeof input === 'string' ? apiUrl(input) : input, init);
+if (window.EventSource) {
+  const _OrigES = window.EventSource;
+  const PatchedES = function (url, cfg) {
+    return new _OrigES(apiUrl(url), cfg);
+  };
+  PatchedES.prototype = _OrigES.prototype;
+  window.EventSource = PatchedES;
+}
+
 const api = (url, opts) => fetch(url, opts).then((r) => r.json());
 
 // 감정(오늘의 기분) 종류 — 대시보드/오버레이 공용
@@ -411,7 +436,7 @@ async function loadRecords() {
 $('#rec-load').addEventListener('click', loadRecords);
 $('#rec-export').addEventListener('click', () => {
   const date = $('#rec-date').value;
-  window.location = '/api/attendance/export' + (date ? '?date=' + date : '');
+  window.location = apiUrl('/api/attendance/export' + (date ? '?date=' + date : ''));
 });
 
 // ---- 대시보드 ----
@@ -1732,7 +1757,7 @@ $('#wk-today').addEventListener('click', () => {
   loadWeekly();
 });
 $('#wk-export').addEventListener('click', () => {
-  window.location = `/api/weekly/export?from=${wkFrom}&to=${wkTo}`;
+  window.location = apiUrl(`/api/weekly/export?from=${wkFrom}&to=${wkTo}`);
 });
 
 // ===== ⌨ HID(키보드) 리더기 입력 =====
@@ -1819,12 +1844,12 @@ async function loadDataManager() {
   } catch {}
 }
 $('#btn-backup').addEventListener('click', () => {
-  window.location = '/api/backup';
+  window.location = apiUrl('/api/backup');
 });
 document.querySelectorAll('[data-export]').forEach((btn) => {
   btn.addEventListener('click', () => {
     const url = EXPORT_URL[btn.dataset.export];
-    if (url) window.location = url;
+    if (url) window.location = apiUrl(url);
   });
 });
 document.querySelectorAll('[data-reset]').forEach((btn) => {

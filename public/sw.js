@@ -1,6 +1,6 @@
 // NFC 학생 출석 — PWA 서비스워커 (크롬북 설치형 웹앱용)
 // 정적 셸(HTML/CSS/JS/아이콘)만 캐시한다. 실시간 데이터(/api/*)와 SSE는 절대 캐시하지 않고 네트워크로 통과시킨다.
-const CACHE = 'nfc-attendance-shell-v1';
+const CACHE = 'nfc-attendance-shell-v2';
 const SHELL = [
   './',
   './index.html',
@@ -35,7 +35,8 @@ self.addEventListener('fetch', (e) => {
   if (url.origin !== self.location.origin) return;
 
   // 실시간 API와 SSE는 캐시 금지 — 항상 서버로 (오프라인이면 자연스럽게 실패)
-  if (url.pathname.startsWith('/api/')) return;
+  // 서브경로 배포(예: /attend/api/...)도 포함하도록 경로 어디에든 '/api/'가 있으면 통과.
+  if (url.pathname.includes('/api/')) return;
 
   // 페이지 이동(문서 요청): 네트워크 우선, 실패 시 캐시된 셸로 폴백(오프라인에도 화면은 뜸)
   if (req.mode === 'navigate') {
