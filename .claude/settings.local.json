@@ -107,7 +107,22 @@
       "Bash(node -e \"const p=require\\('./package.json'\\);console.log\\(JSON.stringify\\(p.scripts,null,2\\)\\);console.log\\('version:',p.version\\)\")",
       "Bash(NFC_DISABLE_SERIAL=1 NFC_DISABLE_HTTPS=1 NFC_PORT=3399 node src/server.mjs)",
       "PowerShell(Get-NetTCPConnection *)",
-      "Bash(node -e \"try{const s=require\\('./data/settings.json'\\);console.log\\('neis.key 있음?', !!\\(s.neis&&s.neis.key\\)\\);console.log\\('ai.apiKey 암호화?', \\(s.ai&&s.ai.apiKey||''\\).slice\\(0,8\\)\\)}catch\\(e\\){console.log\\('settings.json 없음'\\)}\")"
+      "Bash(node -e \"try{const s=require\\('./data/settings.json'\\);console.log\\('neis.key 있음?', !!\\(s.neis&&s.neis.key\\)\\);console.log\\('ai.apiKey 암호화?', \\(s.ai&&s.ai.apiKey||''\\).slice\\(0,8\\)\\)}catch\\(e\\){console.log\\('settings.json 없음'\\)}\")",
+      "Bash(timeout 25 ssh -i ~/.ssh/ssh-key-2026-05-25.key -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15 ubuntu@kfcman.link \"echo CONNECTED; hostname; ls -d /home/ubuntu/nfc-attendance /var/www/nfc-attendance 2>/dev/null\")",
+      "Bash(timeout 40 ssh -i ~/.ssh/ssh-key-2026-05-25.key -o BatchMode=yes -o ConnectTimeout=15 ubuntu@kfcman.link 'cd /home/ubuntu/nfc-attendance && echo \"=== 현재 커밋 ===\" && git log --oneline -1 && echo \"=== 로컬 변경 ===\" && git status --short && echo \"=== pm2 ===\" && pm2 list 2>/dev/null | grep -E \"nfc|name\" ')",
+      "Bash(timeout 40 ssh -i ~/.ssh/ssh-key-2026-05-25.key -o BatchMode=yes -o ConnectTimeout=15 ubuntu@kfcman.link 'cd /home/ubuntu/nfc-attendance && echo \"=== 파일 ===\" && ls && echo \"=== 버전 ===\" && grep -m1 version package.json && echo \"=== pm2 ===\" && pm2 list 2>&1 | head -12 && echo \"=== node22 ===\" && ls /opt/node22/bin/node 2>&1')",
+      "Bash(timeout 60 ssh -i ~/.ssh/ssh-key-2026-05-25.key -o BatchMode=yes -o ConnectTimeout=15 ubuntu@kfcman.link 'cd /home/ubuntu/nfc-attendance && tar czf /home/ubuntu/nfc-backup-$\\(date +%Y%m%d-%H%M%S\\).tar.gz src public package.json config.json && ls -lh /home/ubuntu/nfc-backup-*.tar.gz | tail -3')",
+      "Bash(tar czf *)",
+      "Read(//tmp/**)",
+      "Bash(timeout 120 scp -i ~/.ssh/ssh-key-2026-05-25.key -o BatchMode=yes -o ConnectTimeout=15 /tmp/nfc-deploy.tar.gz ubuntu@kfcman.link:/tmp/nfc-deploy.tar.gz)",
+      "Bash(timeout 90 ssh -i ~/.ssh/ssh-key-2026-05-25.key -o BatchMode=yes -o ConnectTimeout=15 ubuntu@kfcman.link 'cd /home/ubuntu/nfc-attendance && tar xzf /tmp/nfc-deploy.tar.gz && echo \"=== 배포 후 버전 ===\" && grep -m1 version package.json && echo \"=== 새 파일 확인 ===\" && ls -la src/ai.mjs src/secret.mjs public/infographic.jpg && echo \"=== 구문 검사 ===\" && /opt/node22/bin/node --check src/server.mjs && echo \"server.mjs OK\"')",
+      "Bash(timeout 90 ssh -i ~/.ssh/ssh-key-2026-05-25.key -o BatchMode=yes -o ConnectTimeout=15 ubuntu@kfcman.link 'pm2 restart nfc-attend --update-env 2>&1 | tail -6; sleep 4; echo \"=== 상태 ===\"; pm2 list 2>&1 | grep -E \"nfc-attend\"; echo \"=== 내부 응답 ===\"; curl -s -m 5 http://127.0.0.1:3100/api/status; echo; echo \"=== 최근 로그 ===\"; pm2 logs nfc-attend --lines 12 --nostream 2>&1 | tail -16')",
+      "Bash(timeout 60 ssh -i ~/.ssh/ssh-key-2026-05-25.key -o BatchMode=yes -o ConnectTimeout=15 ubuntu@kfcman.link ' *)",
+      "Bash(node -e \"const s=require\\('./data/settings.json'\\);console.log\\(Object.keys\\(s\\)\\);console.log\\('neis 섹션:', JSON.stringify\\(s.neis||null\\)\\)\")",
+      "Bash(node -e \"const c=require\\('./config.json'\\);const n={...c.neis};n.key=n.key?'\\(키 있음, 길이 '+n.key.length+'\\)':'';console.log\\(JSON.stringify\\(n,null,2\\)\\)\")",
+      "Bash(node -e \"console.log\\('config.json neis.key =', JSON.stringify\\(require\\('./config.json'\\).neis.key\\)\\); console.log\\('settings.json neis.key 있음?', !!require\\('./data/settings.json'\\).neis.key\\)\")",
+      "Bash(NFC_DISABLE_SERIAL=1 NFC_DISABLE_HTTPS=1 NFC_PORT=3398 node src/server.mjs)",
+      "Bash(timeout 90 ssh -i ~/.ssh/ssh-key-2026-05-25.key -o BatchMode=yes -o ConnectTimeout=15 ubuntu@kfcman.link ' *)"
     ]
   }
 }
