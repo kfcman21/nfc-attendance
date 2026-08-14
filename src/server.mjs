@@ -9,6 +9,8 @@ import selfsigned from 'selfsigned';
 import { SerialPort } from 'serialport';
 import { Reader } from './reader.mjs';
 import * as db from './db.mjs';
+import { loadOrCreateSecretKey, encryptSecret, decryptSecret, isEncrypted } from './secret.mjs';
+import * as ai from './ai.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const config = JSON.parse(readFileSync(join(__dirname, '..', 'config.json'), 'utf8'));
@@ -39,6 +41,10 @@ config.neis.meal = { enabled: false, ...(config.neis.meal || {}) };
 config.neis.schedule = { enabled: false, ...(config.neis.schedule || {}) };
 // 화면·디버그: Electron 개발자도구(DevTools) 자동 표시 여부 등. (electron-main.mjs도 settings.json에서 읽음)
 config.ui = { devtools: false, ...(config.ui || {}) };
+// 업스테이지(Upstage) Solar AI 피드백: apiKey는 settings.json에 AES-256-GCM 암호문(enc:v1:...)으로만 저장.
+config.ai = { enabled: true, model: 'solar-pro2', apiKey: '', ...(config.ai || {}) };
+// 지구 살리기 포인트 관리자 모드: 교사 PIN(암호문 저장). PIN이 설정되면 포인트 증감은 PIN 검증 후에만 가능.
+config.points = { pinEnc: '', ...(config.points || {}) };
 // HTTPS: 크롬북 등에서 PWA 설치(보안 컨텍스트)하려면 HTTPS가 필요. cert/key를 지정하면 그 인증서를,
 // 없으면 LAN IP를 포함한 자체 서명 인증서를 자동 생성한다. HTTP(평문)도 그대로 함께 제공된다.
 config.https = { enabled: true, port: 3443, cert: '', key: '', ...(config.https || {}) };
@@ -65,8 +71,40 @@ try {
     }
     if (saved.ui) config.ui = { ...config.ui, ...saved.ui };
     if (saved.https) config.https = { ...config.https, ...saved.https };
+    if (saved.ai) config.ai = { ...config.ai, ...saved.ai };
+    if (saved.points) config.points = { ...config.points, ...saved.points };
   }
 } catch {}
+
+// ---- AI 비밀키 처리: 로컬 암호화 키 준비 + 평문으로 저장된 API 키가 있으면 암호문으로 마이그레이션 ----
+const secretKey = loadOrCreateSecretKey(DATA_DIR);
+if (config.ai.apiKey && !isEncrypted(config.ai.apiKey)) {
+  config.ai.apiKey = encryptSecret(secretKey, config.ai.apiKey);
+  try {
+    saveSettings({ ai: config.ai });
+  } catch {}
+}
+// 실제 호출에 쓸 평문 키: 환경변수(UPSTAGE_API_KEY)가 있으면 우선, 없으면 암호문 복호화
+function upstageApiKey() {
+  return process.env.UPSTAGE_API_KEY || decryptSecret(secretKey, config.ai.apiKey);
+}
+
+// API 키를 화면에 보여줄 때는 앞뒤 일부만 남기고 가린다. (원문은 절대 응답에 싣지 않음)
+function maskKey(k) {
+  const s = String(k || '');
+  if (!s) return '';
+  if (s.length <= 8) return '****';
+  return s.slice(0, 4) + '****' + s.slice(-4);
+}
+// 저장 요청에 가려진 값(****)이 그대로 돌아오면 "변경 없음"으로 취급한다.
+const isMaskedValue = (v) => typeof v === 'string' && v.includes('****');
+
+// CSV 셀 값 정리: 따옴표 이스케이프 + 엑셀 수식 주입(=,+,-,@ 시작) 방지
+function csvSafe(v) {
+  let s = String(v ?? '');
+  if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+  return `"${s.replace(/"/g, '""')}"`;
+}
 
 // settings.json을 통째로 덮어쓰지 않고 일부만 병합 저장 (serial·scoring 공존)
 function saveSettings(patch) {
@@ -640,15 +678,71 @@ app.post('/api/students', (req, res) => {
 });
 
 app.put('/api/students/:id', (req, res) => {
-  res.json(db.updateStudent(Number(req.params.id), req.body));
+  const id = Number(req.params.id);
+  const cur = db.getStudentById(id);
+  if (!cur) return res.status(404).json({ error: '학생을 찾을 수 없습니다.' });
+  // 보내지 않은 필드는 기존 값 유지 (name 누락 시 이름이 지워지는 문제 방지)
+  const { name = cur.name, student_no = cur.student_no, grade = cur.grade } = req.body || {};
+  res.json(db.updateStudent(id, { name, student_no, grade }));
+});
+
+// ---- 포인트 관리자(교사) PIN ----
+// 무차별 대입 방지: 5회 연속 실패 시 30초 잠금
+let pinFailCount = 0;
+let pinLockUntil = 0;
+const pinLocked = () => Date.now() < pinLockUntil;
+const pointsPinOk = (pin) => {
+  if (!config.points.pinEnc) return true;
+  const ok = decryptSecret(secretKey, config.points.pinEnc) === String(pin ?? '');
+  if (ok) {
+    pinFailCount = 0;
+  } else {
+    pinFailCount += 1;
+    if (pinFailCount >= 5) {
+      pinLockUntil = Date.now() + 30000;
+      pinFailCount = 0;
+    }
+  }
+  return ok;
+};
+const PIN_LOCK_MSG = 'PIN 입력이 여러 번 틀렸습니다. 30초 후 다시 시도하세요.';
+
+app.get('/api/points-config', (req, res) => res.json({ hasPin: !!config.points.pinEnc }));
+
+// PIN 설정/변경/해제 — 기존 PIN이 있으면 currentPin 검증 필수
+app.post('/api/points-config', (req, res) => {
+  const { currentPin, pin } = req.body || {};
+  if (pinLocked()) return res.status(429).json({ error: PIN_LOCK_MSG });
+  if (config.points.pinEnc && !pointsPinOk(currentPin))
+    return res.status(401).json({ error: '현재 PIN이 일치하지 않습니다.' });
+  const next = String(pin ?? '').trim();
+  config.points.pinEnc = next ? encryptSecret(secretKey, next) : '';
+  try {
+    saveSettings({ points: config.points });
+  } catch (e) {
+    console.error('포인트 PIN 저장 실패:', e.message);
+  }
+  res.json({ ok: true, hasPin: !!config.points.pinEnc });
+});
+
+// 관리자 모드 잠금 해제 검증
+app.post('/api/points-auth', (req, res) => {
+  if (!config.points.pinEnc) return res.json({ ok: true, hasPin: false });
+  if (pinLocked()) return res.status(429).json({ error: PIN_LOCK_MSG });
+  if (pointsPinOk(req.body?.pin)) return res.json({ ok: true, hasPin: true });
+  res.status(401).json({ error: 'PIN이 일치하지 않습니다.' });
 });
 
 // ---- 학생 포인트 수정 API ----
 // delta 값이 있으면 기존 포인트에서 증감하고, points 값이 있으면 지정한 포인트로 변경합니다.
+// 관리자 PIN이 설정된 경우 pin 검증을 통과해야 한다 (교사 전용).
 app.put('/api/students/:id/points', (req, res) => {
   const id = Number(req.params.id);
   const { delta, points } = req.body;
-  
+  if (pinLocked()) return res.status(429).json({ error: PIN_LOCK_MSG });
+  if (!pointsPinOk(req.body?.pin))
+    return res.status(401).json({ error: '관리자 모드에서만 포인트를 조작할 수 있습니다. (PIN 필요)' });
+
   try {
     let updated;
     if (delta !== undefined) {
@@ -697,17 +791,20 @@ app.get('/api/attendance', (req, res) => {
 
 // CSV 내보내기 (?date=YYYY-MM-DD 선택) — 번호·상태·점수 포함
 app.get('/api/attendance/export', (req, res) => {
-  const rows = db.listAttendanceExport(req.query.date || null);
+  // 날짜는 YYYY-MM-DD 형식만 허용 (파일명/헤더 주입 방지)
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date || '')) ? req.query.date : null;
+  const rows = db.listAttendanceExport(date);
   const statusLabel = { ontime: '정시', late: '지각' };
   const header = '번호,이름,카드UID,출석시각,상태,점수\n';
   const body = rows
-    .map(
-      (r) =>
-        `"${r.student_no ?? ''}","${r.name ?? ''}","${r.card_uid}","${r.tapped_at}","${statusLabel[r.status] ?? ''}","${r.score ?? ''}"`
+    .map((r) =>
+      [r.student_no ?? '', r.name ?? '', r.card_uid, r.tapped_at, statusLabel[r.status] ?? '', r.score ?? '']
+        .map(csvSafe)
+        .join(',')
     )
     .join('\n');
   const csv = '﻿' + header + body; // BOM: 엑셀 한글 깨짐 방지
-  const fname = `attendance_${req.query.date || 'all'}.csv`;
+  const fname = `attendance_${date || 'all'}.csv`;
   res.set('Content-Type', 'text/csv; charset=utf-8');
   res.set('Content-Disposition', `attachment; filename="${fname}"`);
   res.send(csv);
@@ -970,7 +1067,7 @@ app.get('/api/weekly', async (req, res) => {
 app.get('/api/weekly/export', async (req, res) => {
   const data = await buildWeekly(req.query);
   const { from, to } = data;
-  const q = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const q = csvSafe;
   const header = ['번호', '이름', ...data.dates, '주간합계', '정시', '지각', '결석'].map(q).join(',');
   const lines = data.students.map((s) => {
     const cells = data.dates.map((d) => (s.days[d] ? s.days[d].score : ''));
@@ -985,7 +1082,7 @@ app.get('/api/weekly/export', async (req, res) => {
 });
 
 // ===== 💾 데이터 관리: 백업 · 통계 · 내보내기 · 초기화 =====
-const csvCell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+const csvCell = csvSafe;
 function sendCsv(res, filename, headerArr, rowArrs) {
   const csv = '﻿' + [headerArr, ...rowArrs].map((r) => r.map(csvCell).join(',')).join('\n');
   res.set('Content-Type', 'text/csv; charset=utf-8');
@@ -1156,11 +1253,12 @@ app.post('/api/sheets/sync', async (req, res) => {
 // ===== 🌐 공공데이터 설정 / 조회 =====
 app.get('/api/public-config', (req, res) => {
   const pd = config.publicData;
+  // 보안: 인증키 원문은 절대 내려주지 않고 가린(masked) 값만 표시용으로 반환
   res.json({
-    serviceKey: pd.serviceKey,
-    holidays: pd.holidays, // { enabled, key }
-    air: pd.air, // { key }
-    weather: pd.weather, // { key }
+    serviceKey: maskKey(pd.serviceKey),
+    holidays: { ...pd.holidays, key: maskKey(pd.holidays.key) },
+    air: { ...pd.air, key: maskKey(pd.air.key) },
+    weather: { ...pd.weather, key: maskKey(pd.weather.key) },
     airweather: pd.airweather, // { enabled, sido, nx, ny }
     hasKey: !!(holidayKey() || airKey() || weatherKey()),
     hasHolidayKey: !!holidayKey(),
@@ -1172,10 +1270,11 @@ app.get('/api/public-config', (req, res) => {
 app.post('/api/public-config', (req, res) => {
   const b = req.body || {};
   const pd = config.publicData;
-  if (b.serviceKey !== undefined) pd.serviceKey = String(b.serviceKey).trim();
-  if (b.holidayKey !== undefined) pd.holidays.key = String(b.holidayKey).trim();
-  if (b.airApiKey !== undefined) pd.air.key = String(b.airApiKey).trim();
-  if (b.weatherKey !== undefined) pd.weather.key = String(b.weatherKey).trim();
+  // 가려진 값(****)이 그대로 돌아오면 기존 키 유지
+  if (b.serviceKey !== undefined && !isMaskedValue(b.serviceKey)) pd.serviceKey = String(b.serviceKey).trim();
+  if (b.holidayKey !== undefined && !isMaskedValue(b.holidayKey)) pd.holidays.key = String(b.holidayKey).trim();
+  if (b.airApiKey !== undefined && !isMaskedValue(b.airApiKey)) pd.air.key = String(b.airApiKey).trim();
+  if (b.weatherKey !== undefined && !isMaskedValue(b.weatherKey)) pd.weather.key = String(b.weatherKey).trim();
   if (b.holidaysEnabled !== undefined) pd.holidays.enabled = !!b.holidaysEnabled;
   if (b.airEnabled !== undefined) pd.airweather.enabled = !!b.airEnabled;
   if (b.sido !== undefined) pd.airweather.sido = String(b.sido).trim() || '서울';
@@ -1244,7 +1343,7 @@ app.get('/api/air-weather', async (req, res) => {
 app.get('/api/neis-config', (req, res) => {
   const n = config.neis;
   res.json({
-    key: n.key,
+    key: maskKey(n.key), // 보안: 원문 대신 가린 값만
     hasKey: !!n.key,
     atptCode: n.atptCode,
     schoolCode: n.schoolCode,
@@ -1257,7 +1356,7 @@ app.get('/api/neis-config', (req, res) => {
 app.post('/api/neis-config', (req, res) => {
   const n = config.neis;
   const b = req.body || {};
-  if (b.key !== undefined) n.key = String(b.key).trim();
+  if (b.key !== undefined && !isMaskedValue(b.key)) n.key = String(b.key).trim();
   if (b.atptCode !== undefined) n.atptCode = String(b.atptCode).trim();
   if (b.schoolCode !== undefined) n.schoolCode = String(b.schoolCode).trim();
   if (b.schoolName !== undefined) n.schoolName = String(b.schoolName).trim();
@@ -1389,6 +1488,135 @@ app.post('/api/ui-config', (req, res) => {
     console.error('UI 설정 저장 실패:', e.message);
   }
   res.json({ ok: true, devtools: config.ui.devtools });
+});
+
+// ===== 🤖 업스테이지(Upstage) Solar AI 피드백 =====
+// 키는 암호문으로만 저장/전송되며, 프론트에는 절대 평문 키를 내려주지 않는다.
+app.get('/api/ai-config', (req, res) => {
+  const key = upstageApiKey();
+  res.json({
+    enabled: !!config.ai.enabled,
+    model: config.ai.model,
+    hasKey: !!key,
+    keyMasked: maskKey(key),
+    envKey: !!process.env.UPSTAGE_API_KEY,
+  });
+});
+
+app.post('/api/ai-config', (req, res) => {
+  const b = req.body || {};
+  if (b.enabled !== undefined) config.ai.enabled = !!b.enabled;
+  if (typeof b.model === 'string' && b.model.trim()) config.ai.model = b.model.trim();
+  // 새 키가 들어오면 즉시 암호화해 저장 — 평문은 메모리에서만 잠깐 존재
+  if (typeof b.apiKey === 'string' && b.apiKey.trim()) {
+    config.ai.apiKey = encryptSecret(secretKey, b.apiKey.trim());
+  }
+  if (b.clearKey) config.ai.apiKey = '';
+  try {
+    saveSettings({ ai: config.ai });
+  } catch (e) {
+    console.error('AI 설정 저장 실패:', e.message);
+  }
+  const key = upstageApiKey();
+  res.json({ ok: true, enabled: config.ai.enabled, model: config.ai.model, hasKey: !!key });
+});
+
+// 공통 호출 래퍼: 설정 확인 → Solar 호출 → 텍스트 반환
+async function aiFeedback(res, prompt) {
+  if (!config.ai.enabled) return res.status(400).json({ error: 'AI 피드백이 꺼져 있습니다. 설정·진단 탭에서 켜세요.' });
+  try {
+    const text = await ai.solarChat({ apiKey: upstageApiKey(), model: config.ai.model, ...prompt });
+    res.json({ ok: true, text, model: config.ai.model });
+  } catch (e) {
+    res.status(502).json({ error: e.message });
+  }
+}
+
+// 연결 테스트
+app.post('/api/ai/test', (req, res) =>
+  aiFeedback(res, {
+    system: '너는 한국어로 답하는 학급 도우미 AI야.',
+    user: '연결 테스트야. "연결 성공! 학급 AI 도우미가 준비됐어요 🤖" 라고만 답해줘.',
+  })
+);
+
+// ① 감정출석부 데이터 피드백
+app.post('/api/ai/mood', (req, res) => {
+  const today = new Date().toLocaleDateString('sv-SE');
+  const from = req.body?.from || today;
+  const to = req.body?.to || today;
+  aiFeedback(res, ai.moodPrompt(db.moodStats(from, to)));
+});
+
+// ①-c 감정출석부 기반 긍정 친구관계 멘트
+app.post('/api/ai/friendship', (req, res) => {
+  const today = new Date().toLocaleDateString('sv-SE');
+  const from = req.body?.from || today;
+  const to = req.body?.to || today;
+  aiFeedback(res, ai.friendshipPrompt(db.moodStats(from, to)));
+});
+
+// ①-b 감정 체크 직후 학생 개인 응원 메시지 (출석 오버레이에 표시)
+app.post('/api/ai/mood-checkin', (req, res) => {
+  const student = db.listStudents().find((s) => s.id === Number(req.body?.studentId));
+  const mood = String(req.body?.mood || '');
+  if (!student) return res.status(404).json({ error: '학생을 찾을 수 없습니다.' });
+  if (!mood) return res.status(400).json({ error: '감정 값이 없습니다.' });
+  const name = student.name?.trim() || `${student.student_no || '?'}번`;
+  aiFeedback(res, ai.moodCheckinPrompt(name, mood, db.recentMoods(student.id, 5)));
+});
+
+// ② 빌린 책 내용 안내
+app.post('/api/ai/book', (req, res) => {
+  const bookId = Number(req.body?.bookId);
+  const book = db.listBooks().find((b) => b.id === bookId);
+  if (!book) return res.status(404).json({ error: '책을 찾을 수 없습니다.' });
+  // 이 책에 대한 친구들의 한 줄 평이 있으면 함께 참고
+  const reviews = (db.readingStats(goalBooks).recentReviews || []).filter((r) => r.title === book.title);
+  aiFeedback(res, ai.bookPrompt(book, { borrower: book.borrower_name, reviews }));
+});
+
+// ③ 지구 살리기 포인트 피드백
+app.post('/api/ai/points', (req, res) => {
+  const student = db.listStudents().find((s) => s.id === Number(req.body?.studentId));
+  if (!student) return res.status(404).json({ error: '학생을 찾을 수 없습니다.' });
+  const sorted = [...db.listStudents()].sort((a, b) => (b.points || 0) - (a.points || 0));
+  const rank = sorted.findIndex((s) => s.id === student.id) + 1;
+  aiFeedback(
+    res,
+    ai.pointsPrompt(student, { rank, classSize: sorted.length, topPoints: sorted[0]?.points || 0 })
+  );
+});
+
+// ④ 운동 데이터 긍정 피드백 (studentId 있으면 개인, 없으면 반 전체)
+app.post('/api/ai/exercise', (req, res) => {
+  const studentId = Number(req.body?.studentId) || null;
+  if (!studentId) {
+    return aiFeedback(res, ai.exercisePrompt({ leaderboard: db.shuttleLeaderboard() }));
+  }
+  const student = db.listStudents().find((s) => s.id === studentId);
+  if (!student) return res.status(404).json({ error: '학생을 찾을 수 없습니다.' });
+  // 셔틀런: 최고·도전 횟수·최근 5회 추이
+  const sRecords = db.shuttleRecords(studentId);
+  const shuttle = sRecords.length
+    ? {
+        best: Math.max(...sRecords.map((r) => r.laps)),
+        attempts: sRecords.length,
+        recent: sRecords.slice(-5).map((r) => r.laps),
+      }
+    : null;
+  // 서킷: 종목별 최고와 최근 추이
+  const byStation = new Map();
+  for (const r of db.circuitRecords(studentId)) {
+    if (!byStation.has(r.station_name)) byStation.set(r.station_name, []);
+    byStation.get(r.station_name).push(r.duration_sec);
+  }
+  const circuitData = [...byStation.entries()].map(([station, secs]) => ({
+    station,
+    best: Math.max(...secs),
+    recent: secs.slice(0, 5).reverse(), // circuitRecords는 최신순 → 시간순으로 뒤집기
+  }));
+  aiFeedback(res, ai.exercisePrompt({ student, shuttle, circuit: circuitData }));
 });
 
 // ===== 📅 오늘 정보 통합 (출석 후 학생에게 보여줄 급식·학사일정·날씨·미세먼지) =====

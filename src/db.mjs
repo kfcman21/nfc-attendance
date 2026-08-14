@@ -438,6 +438,17 @@ export function moodStats(from, to) {
   };
 }
 
+// 학생의 최근 감정 기록 (오래된 → 최신 순, 최대 n개) — AI 체크인 피드백 참고용
+export function recentMoods(studentId, n = 5) {
+  return db
+    .prepare(
+      'SELECT mood FROM attendance WHERE student_id = ? AND mood IS NOT NULL ORDER BY tapped_at DESC LIMIT ?'
+    )
+    .all(studentId, n)
+    .map((r) => r.mood)
+    .reverse();
+}
+
 function weatherFromScore(score, total) {
   if (!total) return { emoji: '🌫️', label: '기록 없음' };
   if (score >= 1.0) return { emoji: '☀️', label: '아주 맑음' };

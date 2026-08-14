@@ -64,6 +64,8 @@ document.querySelectorAll('.tab').forEach((btn) => {
     if (btn.dataset.tab === 'circuit') loadCircuit();
     if (btn.dataset.tab === 'settings') loadSettings();
     if (btn.dataset.tab === 'data') loadDataManager();
+    if (btn.dataset.tab === 'home') renderHomeToday();
+    if (btn.dataset.tab !== 'points') lockPointsAdmin(); // 포인트 탭을 떠나면 관리자 모드 자동 잠금
     if (['live', 'shuttle', 'circuit'].includes(btn.dataset.tab)) loadAirWeather();
     if (btn.dataset.tab === 'live') loadNeisMeal();
     // 탭에 맞는 리더기 모드로 전환 (해당 탭에서만 카드 태그를 그 용도로 처리)
@@ -79,6 +81,27 @@ function setMode(mode) {
     body: JSON.stringify({ mode }),
   }).catch(() => {});
 }
+
+// ---- 인포그래픽 라이트박스 (이미지 확대 보기) ----
+// 인포그래픽 이미지를 클릭하면 전체 화면으로 크게 보여주는 기능
+(() => {
+  const wrap = document.getElementById('infographic-wrap');   // 이미지 감싸는 영역
+  const lb   = document.getElementById('infographic-lightbox'); // 어두운 배경 + 확대 이미지
+  const closeBtn = document.getElementById('lightbox-close');   // 닫기(×) 버튼
+  if (!wrap || !lb) return; // 요소가 없으면 아무것도 하지 않음
+
+  // 이미지(또는 감싸개) 클릭 → 라이트박스 열기
+  wrap.addEventListener('click', () => { lb.hidden = false; });
+
+  // 닫기 버튼 클릭 → 라이트박스 닫기
+  closeBtn.addEventListener('click', (e) => { e.stopPropagation(); lb.hidden = true; });
+
+  // 어두운 배경(이미지 바깥) 클릭 → 라이트박스 닫기
+  lb.addEventListener('click', (e) => { if (e.target === lb) lb.hidden = true; });
+
+  // ESC 키 → 라이트박스 닫기
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !lb.hidden) lb.hidden = true; });
+})();
 
 // ---- 연결 상태 ----
 function setStatus(connected, message) {
@@ -170,6 +193,7 @@ function onTap(ev) {
 let moodTimer = null;
 function showMoodPicker(student, attendanceId) {
   hideToday(); // 이전 학생의 '오늘 정보'가 떠 있으면 닫기
+  hideAiMoodPopup(); // 이전 학생의 AI 응원 팝업이 떠 있으면 닫기
   const overlay = $('#mood-overlay');
   $('#mood-who').textContent = `${displayName(student)}님,`;
   const box = $('#mood-buttons');
@@ -178,7 +202,7 @@ function showMoodPicker(student, attendanceId) {
     const b = document.createElement('button');
     b.className = 'mood-btn';
     b.innerHTML = `<span class="emoji">${m.emoji}</span><span class="label">${m.label}</span>`;
-    b.addEventListener('click', () => submitMood(attendanceId, m));
+    b.addEventListener('click', () => submitMood(attendanceId, m, student));
     box.append(b);
   }
   overlay.classList.add('show');
@@ -193,19 +217,31 @@ function hideMoodPicker() {
   $('#mood-buttons').innerHTML = '';
 }
 
-async function submitMood(attendanceId, mood) {
+async function submitMood(attendanceId, mood, student) {
   fetch(`/api/attendance/${attendanceId}/mood`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ mood: mood.key }),
   });
-  // 감사 인사 후 닫기
+
+  // AI 응원 한마디는 미리 요청해 두고(팝업이 뜰 때쯤 도착), 실패하면 팝업을 건너뛴다
+  const aiPromise = fetch('/api/ai/mood-checkin', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ studentId: student?.id, mood: mood.key }),
+  })
+    .then((r) => r.json().then((d) => ({ ok: r.ok, d })))
+    .then(({ ok, d }) => {
+      if (!ok || d.error || !d.text) throw new Error(d.error || 'no text');
+      return d.text;
+    });
+
+  // 감사 인사 잠깐 → 원래 내용 복구 → AI 팝업으로 이어가기
   const overlay = $('#mood-overlay');
   overlay.querySelector('.overlay__box').innerHTML =
     `<div class="overlay__thanks">${mood.emoji} 기록했어요!</div>`;
   clearTimeout(moodTimer);
   moodTimer = setTimeout(() => {
-    // 원래 내용 복구
     overlay.querySelector('.overlay__box').innerHTML = `
       <div class="overlay__name" id="mood-who">○○○님</div>
       <div class="overlay__title">오늘 기분이 어때요?</div>
@@ -213,8 +249,48 @@ async function submitMood(attendanceId, mood) {
       <div class="overlay__skip" id="mood-skip">건너뛰기</div>`;
     overlay.classList.remove('show');
     $('#mood-skip').addEventListener('click', skipMood);
-    showTodayInfo(); // 감정 기록 후 오늘의 정보 보여주기
-  }, 1500);
+    showAiMoodPopup(student, mood, aiPromise); // AI 응원 팝업 (실패 시 오늘의 정보로 바로 이동)
+  }, 1200);
+}
+
+// ===== 🤖 감정 체크 후 AI 응원 팝업 =====
+let aiPopTimer = null;
+function hideAiMoodPopup() {
+  clearTimeout(aiPopTimer);
+  $('#ai-mood-overlay').classList.remove('show');
+}
+function showAiMoodPopup(student, mood, aiPromise) {
+  const ov = $('#ai-mood-overlay');
+  const textEl = $('#ai-pop-text');
+  $('#ai-pop-emoji').textContent = mood.emoji;
+  $('#ai-pop-who').textContent = `${displayName(student)}님,`;
+  textEl.className = 'mood-ai mood-ai--loading';
+  textEl.textContent = '응원 한마디 준비 중';
+  aiPopSound(); // 팝업 효과음
+  ov.classList.add('show');
+
+  let done = false;
+  const close = () => {
+    if (done) return;
+    done = true;
+    hideAiMoodPopup();
+    showTodayInfo(); // 팝업 다음엔 기존 흐름(오늘의 정보)으로
+  };
+  // AI가 너무 늦으면(8초) 팝업을 접고 다음으로 넘어간다
+  clearTimeout(aiPopTimer);
+  aiPopTimer = setTimeout(close, 8000);
+
+  aiPromise
+    .then((text) => {
+      if (done || !ov.classList.contains('show')) return;
+      textEl.className = 'mood-ai';
+      textEl.textContent = text;
+      clearTimeout(aiPopTimer);
+      aiPopTimer = setTimeout(close, 16000); // 읽을 시간을 넉넉히 주고 자동 닫기
+    })
+    .catch(close);
+
+  $('#ai-pop-close').onclick = close;
 }
 // 감정 건너뛰기: 감정창 닫고 오늘 정보 표시
 function skipMood() {
@@ -576,18 +652,69 @@ $('#sim-btn').addEventListener('click', () => {
 // ---- 칭찬 포인트 비즈니스 로직 ----
 let activeStudentForPoints = null; // 현재 포인트 조작을 위해 태그된 학생 객체 보관용 변수
 
+// ---- 🔒 교사 관리자 모드 (PIN) ----
+let pointsPin = null; // 잠금 해제 후 메모리에만 보관 (탭을 떠나면 다시 잠김)
+let pointsHasPin = false;
+
+function lockPointsAdmin() {
+  pointsPin = null;
+}
+
+// 잠금 상태에 따라 포인트 조작 UI 표시/숨김
+function renderPointsLock() {
+  const locked = pointsHasPin && !pointsPin;
+  $('#point-lock').hidden = !locked;
+  $('#point-unlocked').hidden = !(pointsHasPin && pointsPin);
+  $('#point-nopin').hidden = pointsHasPin;
+  $('#point-actions').style.display = locked ? 'none' : '';
+}
+
 /**
  * 포인트 상점 탭을 눌렀을 때 실행되는 초기화 함수
  */
 async function loadPointsTab() {
+  // 관리자 PIN 설정 여부 확인 후 잠금 UI 반영
+  try {
+    pointsHasPin = (await api('/api/points-config')).hasPin;
+  } catch {}
+  renderPointsLock();
+
   // 학급 포인트 랭킹 리더보드를 새로 로드합니다.
   await loadRanking();
-  
+
   // 포인트 조작 화면을 '카드를 대기하는 기본 상태'로 리셋합니다.
   resetPointsScannerCard('bigcard--idle', '카드를 태그하면 학생 정보가 표시됩니다');
   $('#point-control-box').style.display = 'none';
   activeStudentForPoints = null;
 }
+
+// 잠금 해제: PIN 검증 성공 시에만 조작 버튼 표시
+$('#pin-unlock')?.addEventListener('click', async () => {
+  const pin = $('#pin-input').value.trim();
+  const msg = $('#pin-msg');
+  if (!pin) return;
+  const res = await fetch('/api/points-auth', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pin }),
+  });
+  if (res.ok) {
+    pointsPin = pin;
+    $('#pin-input').value = '';
+    msg.textContent = '';
+    renderPointsLock();
+  } else {
+    msg.className = 'msg err';
+    msg.textContent = 'PIN이 일치하지 않습니다.';
+  }
+});
+$('#pin-input')?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') $('#pin-unlock').click();
+});
+$('#pin-lock-btn')?.addEventListener('click', () => {
+  lockPointsAdmin();
+  renderPointsLock();
+});
 
 /**
  * 데이터베이스의 모든 학생 목록을 가져와 포인트를 기준으로 정렬 후 랭킹판을 그립니다.
@@ -655,7 +782,7 @@ async function updatePoints(delta) {
   const res = await fetch(`/api/students/${activeStudentForPoints.id}/points`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ delta }),
+    body: JSON.stringify({ delta, pin: pointsPin }),
   });
   if (res.ok) {
     const updated = await res.json();
@@ -663,6 +790,13 @@ async function updatePoints(delta) {
     $('#point-student-val').textContent = updated.points;
     // 랭킹 리스트 리렌더링
     loadRanking();
+    // 교사가 포인트를 '주면' 자동으로 AI 응원 피드백 팝업
+    if (delta > 0) runAi(null, null, '/api/ai/points', { studentId: updated.id }, '🌍 지구 살리기 AI 피드백');
+  } else if (res.status === 401) {
+    // 서버에서 PIN 거부 → 다시 잠금 상태로
+    lockPointsAdmin();
+    pointsHasPin = true;
+    renderPointsLock();
   }
 }
 
@@ -726,7 +860,11 @@ async function loadBooks() {
       ? `<button class="secondary act-return" style="padding:6px 14px;font-size:13px">반납</button> `
       : '';
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${b.title}</td><td>${b.author ?? ''}</td><td>${status}</td><td class="uid">${b.card_uid}</td><td style="white-space:nowrap">${returnBtn}<button class="danger act-del">삭제</button></td>`;
+    tr.innerHTML = `<td>${b.title}</td><td>${b.author ?? ''}</td><td>${status}</td><td class="uid">${b.card_uid}</td><td style="white-space:nowrap"><button class="ai-btn act-ai" style="padding:6px 14px;font-size:13px">AI 안내</button> ${returnBtn}<button class="danger act-del">삭제</button></td>`;
+
+    tr.querySelector('.act-ai').addEventListener('click', (e) => {
+      runAi(e.target, null, '/api/ai/book', { bookId: b.id }, `📖 『${b.title}』 AI 책 안내`);
+    });
 
     const retEl = tr.querySelector('.act-return');
     if (retEl)
@@ -794,6 +932,8 @@ function onLending(ev) {
     case 'borrowed':
       setBanner('lending-banner--borrow', `${ev.student.name} → 『${ev.book.title}』`, '대여 완료! 📗');
       loadBooks();
+      // 대출하면 자동으로 AI 책 안내 팝업
+      runAi(null, null, '/api/ai/book', { bookId: ev.book.id }, `📖 『${ev.book.title}』 AI 책 안내`);
       break;
     case 'returned':
       setBanner('lending-banner--return', `『${ev.book.title}』 반납 완료 📘`, ev.student ? `${ev.student.name}님 수고했어요!` : '');
@@ -953,6 +1093,7 @@ async function loadShuttle() {
   for (const v of live) shuttleBoard.set(v.studentId, { studentId: v.studentId, name: v.name, laps: v.laps, best: 0 });
   renderShuttleBoard();
   loadShuttleRank();
+  fillAiShuttleSelect();
 }
 async function loadShuttleRank() {
   const rows = await api('/api/shuttle/leaderboard');
@@ -970,6 +1111,8 @@ $('#shuttle-save').addEventListener('click', async () => {
   const res = await api('/api/shuttle/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
   const news = res.filter((r) => r.isNewBest);
   alert(`기록 저장 완료! ${res.length}명 저장${news.length ? `\n🎉 신기록: ${news.map((r) => r.name).join(', ')}` : ''}`);
+  // 셔틀런 세션을 마무리하면 반 전체 AI 응원 피드백 팝업
+  if (res.length) runAi(null, null, '/api/ai/exercise', {}, '🏃 우리 반 AI 운동 피드백');
 });
 $('#shuttle-reset').addEventListener('click', () => {
   if (confirm('현재 진행 중인 왕복 수를 모두 초기화할까요?'))
@@ -1064,6 +1207,8 @@ function onCircuit(ev) {
       beep(880, 0.15);
       if (ev.isNewBest) celebrate('🏋️', '개인 신기록!', `${ev.student.name} · ${ev.station.name} ${ev.durationSec}초`);
       if ($('#growth-student').value === String(ev.student.id)) loadGrowth(ev.student.id);
+      // 운동을 마무리하면 자동으로 AI 긍정 피드백 팝업
+      runAi(null, null, '/api/ai/exercise', { studentId: ev.student.id }, `🏋️ ${ev.student.name} AI 운동 피드백`);
       break;
     case 'need-student':
       setBannerEl('#circuit-banner', 'lending-banner--warn', '먼저 학생 카드를 태그하세요', ev.station.name);
@@ -1205,6 +1350,8 @@ async function loadSettings() {
   await loadPublicConfig();
   await loadNeisConfig();
   await loadUiConfig();
+  await loadAiConfig();
+  await loadPointsPinConfig();
   await loadPorts(cfg.port);
 }
 
@@ -1981,12 +2128,216 @@ themeBtn.addEventListener('click', () => {
   applyTheme(next);
 });
 
+// ===== 🏠 홈 (홈페이지 스타일 메뉴) =====
+// 메뉴 카드 클릭 → 해당 탭 버튼을 눌러 기존 탭 전환 로직을 그대로 사용
+document.querySelectorAll('.menu-card[data-goto]').forEach((card) => {
+  card.addEventListener('click', () => {
+    document.querySelector(`.tab[data-tab="${card.dataset.goto}"]`)?.click();
+  });
+});
+
+function renderHomeToday() {
+  const el = $('#home-today');
+  if (!el) return;
+  const now = new Date();
+  el.textContent = now.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
+}
+
+// ===== 🤖 AI 피드백 (업스테이지 Solar) — 공용 팝업 =====
+// 팝업 등장 효과음: 밝은 3음 차임 (도-미-솔)
+function aiPopSound() {
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    [523.25, 659.25, 783.99].forEach((freq, i) => {
+      const t = audioCtx.currentTime + i * 0.11;
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.type = 'sine';
+      o.frequency.value = freq;
+      o.connect(g);
+      g.connect(audioCtx.destination);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.22, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.32);
+      o.start(t);
+      o.stop(t + 0.34);
+    });
+  } catch (e) {}
+}
+
+function showAiPopup(title, text, isError = false, loading = false) {
+  $('#ai-ov-title').textContent = title || 'AI 피드백';
+  const el = $('#ai-ov-text');
+  el.className = 'mood-ai' + (loading ? ' mood-ai--loading' : '') + (isError ? ' mood-ai--err' : '');
+  el.textContent = text;
+  const ov = $('#ai-overlay');
+  if (!ov.classList.contains('show')) aiPopSound(); // 팝업이 새로 뜰 때만 효과음
+  ov.classList.add('show');
+}
+function hideAiPopup() {
+  $('#ai-overlay').classList.remove('show');
+}
+$('#ai-ov-close')?.addEventListener('click', hideAiPopup);
+
+// btn 비활성화 → 팝업 로딩 → 서버 호출 → 결과/오류를 팝업에 표시 (out 인자는 하위 호환용, 미사용)
+async function runAi(btn, out, url, body = {}, title = 'AI 피드백') {
+  if (btn) btn.disabled = true;
+  showAiPopup(title, 'AI가 생각하는 중이에요', false, true);
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const d = await res.json();
+    if (!res.ok || d.error) throw new Error(d.error || `HTTP ${res.status}`);
+    showAiPopup(title, d.text);
+  } catch (e) {
+    showAiPopup(title, '⚠ ' + (e.message || 'AI 피드백을 가져오지 못했어요.'), true);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+// ① 감정출석부 AI 피드백 (조회 기간 기준)
+$('#ai-mood-btn')?.addEventListener('click', (e) => {
+  runAi(e.target, null, '/api/ai/mood', {
+    from: $('#mood-from').value || undefined,
+    to: $('#mood-to').value || undefined,
+  }, '😊 AI 감정 피드백');
+});
+
+// ①-c 감정출석부 기반 긍정 친구관계 멘트
+$('#ai-friend-btn')?.addEventListener('click', (e) => {
+  runAi(e.target, null, '/api/ai/friendship', {
+    from: $('#mood-from').value || undefined,
+    to: $('#mood-to').value || undefined,
+  }, '🤝 긍정 친구관계 멘트');
+});
+
+// ③ 지구 살리기 포인트 AI 피드백 (카드 태그로 선택된 학생)
+$('#ai-points-btn')?.addEventListener('click', (e) => {
+  if (!activeStudentForPoints) {
+    showAiPopup('🌍 지구 살리기 AI 피드백', '⚠ 먼저 학생 카드를 태그해 주세요.', true);
+    return;
+  }
+  runAi(e.target, null, '/api/ai/points', { studentId: activeStudentForPoints.id }, '🌍 지구 살리기 AI 피드백');
+});
+
+// ④-1 셔틀런 AI 피드백 (학생 개인 또는 반 전체)
+async function fillAiShuttleSelect() {
+  const sel = $('#ai-shuttle-student');
+  if (!sel) return;
+  const students = await api('/api/students');
+  const cur = sel.value;
+  sel.innerHTML =
+    '<option value="">🏫 우리 반 전체</option>' +
+    students.map((s) => `<option value="${s.id}">${displayName(s)}</option>`).join('');
+  sel.value = cur;
+}
+$('#ai-shuttle-btn')?.addEventListener('click', (e) => {
+  const sid = $('#ai-shuttle-student').value;
+  runAi(e.target, null, '/api/ai/exercise', sid ? { studentId: Number(sid) } : {}, '🏃 AI 운동 피드백');
+});
+
+// ④-2 서킷 AI 성장 피드백 (성장 그래프에서 선택된 학생)
+$('#ai-circuit-btn')?.addEventListener('click', (e) => {
+  const sid = $('#growth-student').value;
+  if (!sid) {
+    showAiPopup('🏋️ AI 성장 피드백', '⚠ 먼저 학생을 선택해 주세요.', true);
+    return;
+  }
+  runAi(e.target, null, '/api/ai/exercise', { studentId: Number(sid) }, '🏋️ AI 성장 피드백');
+});
+
+// ---- ⚙ 지구 포인트 관리자 PIN 설정 ----
+async function loadPointsPinConfig() {
+  try {
+    const cfg = await api('/api/points-config');
+    $('#pt-pin-status').textContent = cfg.hasPin
+      ? '🔒 관리자 PIN 설정됨 — 포인트 조작은 교사만 가능합니다.'
+      : '⚠ PIN이 없어 누구나 포인트를 조작할 수 있어요.';
+    $('#pt-pin-cur').value = '';
+    $('#pt-pin-new').value = '';
+  } catch {}
+}
+$('#pt-pin-save')?.addEventListener('click', async () => {
+  const msg = $('#pt-pin-msg');
+  const res = await fetch('/api/points-config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ currentPin: $('#pt-pin-cur').value.trim(), pin: $('#pt-pin-new').value.trim() }),
+  });
+  const d = await res.json();
+  if (res.ok) {
+    msg.className = 'msg ok';
+    msg.textContent = d.hasPin ? '관리자 PIN 저장 완료! (암호화 보관)' : 'PIN을 해제했습니다.';
+    lockPointsAdmin();
+    loadPointsPinConfig();
+  } else {
+    msg.className = 'msg err';
+    msg.textContent = d.error || '저장 실패';
+  }
+});
+
+// ---- ⚙ AI 설정 (키는 저장 시에만 서버로 전송, 화면에는 마스킹 상태만 표시) ----
+async function loadAiConfig() {
+  try {
+    const cfg = await api('/api/ai-config');
+    $('#ai-on').checked = !!cfg.enabled;
+    $('#ai-model').value = cfg.model || 'solar-pro2';
+    $('#ai-key').value = '';
+    $('#ai-status').textContent = cfg.hasKey
+      ? `🔐 API 키 저장됨 (${cfg.keyMasked}${cfg.envKey ? ' · 환경변수 사용 중' : ' · 암호화 보관'})`
+      : '⚠ API 키가 아직 없어요. 키를 입력하고 저장하세요.';
+  } catch {}
+}
+$('#ai-save')?.addEventListener('click', async () => {
+  const body = { enabled: $('#ai-on').checked, model: $('#ai-model').value };
+  const key = $('#ai-key').value.trim();
+  if (key) body.apiKey = key;
+  const res = await fetch('/api/ai-config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const msg = $('#ai-msg');
+  if (res.ok) {
+    msg.className = 'msg ok';
+    msg.textContent = '저장 완료!' + (key ? ' (키는 암호화되어 보관됩니다)' : '');
+    loadAiConfig();
+  } else {
+    msg.className = 'msg err';
+    msg.textContent = '저장 실패';
+  }
+});
+$('#ai-test')?.addEventListener('click', async (e) => {
+  const msg = $('#ai-msg');
+  msg.className = 'msg';
+  msg.textContent = '연결 확인 중…';
+  e.target.disabled = true;
+  try {
+    const res = await fetch('/api/ai/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    const d = await res.json();
+    if (!res.ok || d.error) throw new Error(d.error || `HTTP ${res.status}`);
+    msg.className = 'msg ok';
+    msg.textContent = '✅ ' + d.text;
+  } catch (err) {
+    msg.className = 'msg err';
+    msg.textContent = '❌ ' + err.message;
+  } finally {
+    e.target.disabled = false;
+  }
+});
+
 // ---- 시작 ----
 $('#rec-date').value = new Date().toLocaleDateString('sv-SE');
 $('#dash-date').value = new Date().toLocaleDateString('sv-SE');
 api('/api/status').then((s) => setStatus(s.connected));
 loadToday();
 connectSSE();
+renderHomeToday(); // 홈 화면 날짜 표시
 loadAirWeather(); // 미세먼지·날씨 위젯 (사용 설정 시에만 표시)
 setInterval(() => loadAirWeather(true), 600000); // 10분마다 갱신
 loadNeisMeal(); // 오늘 급식 위젯 (사용 설정 시에만 표시)

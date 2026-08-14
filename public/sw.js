@@ -1,12 +1,13 @@
 // NFC 학생 출석 — PWA 서비스워커 (크롬북 설치형 웹앱용)
 // 정적 셸(HTML/CSS/JS/아이콘)만 캐시한다. 실시간 데이터(/api/*)와 SSE는 절대 캐시하지 않고 네트워크로 통과시킨다.
-const CACHE = 'nfc-attendance-shell-v2';
+const CACHE = 'nfc-attendance-shell-v3';
 const SHELL = [
   './',
   './index.html',
   './style.css',
   './app.js',
   './manifest.webmanifest',
+  './infographic.jpg',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-maskable-512.png',
