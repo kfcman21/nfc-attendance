@@ -76,7 +76,7 @@ function createWindow() {
     height: 820,
     minWidth: 800,
     minHeight: 600,
-    title: '학생 출석 - CR-100',
+    title: 'NFC 에듀태그 - 스마트 학급 & 과학실 올인원',
     backgroundColor: '#ffffff',
     webPreferences: { contextIsolation: true },
   });
@@ -92,7 +92,7 @@ function showSplash() {
     height: 820,
     minWidth: 800,
     minHeight: 600,
-    title: '학생 출석 - CR-100',
+    title: 'NFC 에듀태그 - 스마트 학급 & 과학실 올인원',
     backgroundColor: '#ffffff',
     webPreferences: { contextIsolation: true },
   });
@@ -100,13 +100,13 @@ function showSplash() {
   win.loadURL(
     'data:text/html;charset=utf-8,' +
       encodeURIComponent(
-        `<html><body style="margin:0;height:100vh;display:flex;align-items:center;justify-content:center;background:#ffffff;color:#111111;font-family:Malgun Gothic,sans-serif;font-size:18px;font-weight:600">프로그램을 시작하는 중...</body></html>`
+        `<html><body style="margin:0;height:100vh;display:flex;align-items:center;justify-content:center;background:#ffffff;color:#111111;font-family:Malgun Gothic,sans-serif;font-size:18px;font-weight:600">NFC 에듀태그를 시작하는 중...</body></html>`
       )
   );
   win.on('closed', () => (win = null));
 }
 
-  app.whenReady().then(async () => {
+app.whenReady().then(async () => {
   startServer();
   showSplash();
   try {

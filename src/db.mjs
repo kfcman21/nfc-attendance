@@ -2,7 +2,6 @@
 import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-
 import { mkdirSync } from 'node:fs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -87,6 +86,48 @@ db.exec(`
     created_at   TEXT NOT NULL DEFAULT (datetime('now','localtime'))
   );
   CREATE INDEX IF NOT EXISTS idx_circuit_student ON circuit_records (student_id);
+
+  /* ===== 🔬 지능형 과학실 테이블 추가 ===== */
+  CREATE TABLE IF NOT EXISTS science_stations (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    card_uid    TEXT UNIQUE NOT NULL,
+    name        TEXT NOT NULL,
+    zone        TEXT,
+    mission     TEXT,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+  );
+
+  CREATE TABLE IF NOT EXISTS science_records (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    station_id  INTEGER NOT NULL,
+    student_id  INTEGER NOT NULL,
+    note        TEXT,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+    FOREIGN KEY(station_id) REFERENCES science_stations(id) ON DELETE CASCADE,
+    FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE
+  );
+  CREATE INDEX IF NOT EXISTS idx_science_student ON science_records (student_id);
+
+  CREATE TABLE IF NOT EXISTS science_tools (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    card_uid     TEXT UNIQUE NOT NULL,
+    name         TEXT NOT NULL,
+    category     TEXT,
+    safety_rules TEXT,
+    location     TEXT,
+    created_at   TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+  );
+
+  CREATE TABLE IF NOT EXISTS science_tool_loans (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    tool_id     INTEGER NOT NULL,
+    student_id  INTEGER NOT NULL,
+    borrowed_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+    returned_at TEXT,
+    FOREIGN KEY(tool_id) REFERENCES science_tools(id) ON DELETE CASCADE,
+    FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE
+  );
+  CREATE INDEX IF NOT EXISTS idx_sci_loans_tool ON science_tool_loans (tool_id);
 `);
 
 // 마이그레이션: 감정(mood) 컬럼 추가 (기존 DB 대응)
@@ -102,7 +143,6 @@ if (!studentCols.some((c) => c.name === 'points')) {
 }
 
 // 마이그레이션: 출석 점수(score)·상태(status) 컬럼 추가 (정시/지각 점수 기능)
-//   status: 'ontime'(정시·만점) | 'late'(지각·0점)
 if (!attCols.some((c) => c.name === 'score')) {
   db.exec('ALTER TABLE attendance ADD COLUMN score INTEGER');
 }
@@ -147,7 +187,6 @@ export function deleteStudent(id) {
 }
 
 // ---- 출석 ----
-// score/status: 정시(만점)·지각(0점) 점수. 서버에서 마감시각과 비교해 계산한 값을 받는다.
 export function recordAttendance(cardUid, { score = null, status = null } = {}) {
   const student = getStudentByCard(cardUid);
   const stmt = db.prepare(
@@ -171,7 +210,6 @@ export function lastAttendanceFor(cardUid) {
 }
 
 // 특정 날짜(YYYY-MM-DD)의 출석. date 미지정 시 전체.
-// 번호만 등록된 학생도 표시할 수 있도록 students.student_no를 함께 가져온다.
 export function listAttendance(date = null) {
   const base = `SELECT a.*, s.student_no AS student_no
                   FROM attendance a
@@ -183,12 +221,9 @@ export function listAttendance(date = null) {
 }
 
 // ---- 대시보드 통계 ----
-// date(YYYY-MM-DD) 기준: 등록 학생 중 출석/미출석, 최근 7일 추이
 export function dashboardStats(date) {
   const totalStudents = db.prepare('SELECT COUNT(*) AS c FROM students').get().c;
 
-  // 그 날 출석한 등록 학생 (학생별 첫 태그 시각·상태·점수)
-  // SQLite는 MIN() 집계 사용 시 같은 행의 다른 컬럼(status/score)을 함께 가져온다(첫 태그 기준).
   const present = db
     .prepare(
       `SELECT s.id, s.name, s.student_no, s.grade,
@@ -205,7 +240,7 @@ export function dashboardStats(date) {
   const lateCount = present.filter((p) => p.status === 'late').length;
   const todayScore = present.reduce((s, p) => s + (p.score ?? 0), 0);
 
-  // 그 날 감정 분포 (mood 키별 인원)
+  // 그 날 감정 분포
   const moodRows = db
     .prepare(
       `SELECT mood, COUNT(*) AS c FROM attendance
@@ -222,7 +257,7 @@ export function dashboardStats(date) {
     .all()
     .filter((s) => !presentIds.has(s.id));
 
-  // 미등록 카드 태그 수 (그 날)
+  // 미등록 카드 태그 수
   const unknownTaps = db
     .prepare(
       `SELECT COUNT(*) AS c FROM attendance
@@ -230,7 +265,7 @@ export function dashboardStats(date) {
     )
     .get(date).c;
 
-  // 최근 7일 일별 출석 인원 (등록 학생 distinct)
+  // 최근 7일 일별 출석 인원
   const rows = db
     .prepare(
       `SELECT date(tapped_at) AS d, COUNT(DISTINCT student_id) AS c
@@ -264,7 +299,7 @@ export function dashboardStats(date) {
   };
 }
 
-// ---- 출석 엑셀(CSV) 내보내기용: 번호·상태·점수까지 포함 ----
+// 출석 엑셀(CSV) 내보내기용
 export function listAttendanceExport(date = null) {
   const base = `SELECT a.name AS name, s.student_no AS student_no, a.card_uid AS card_uid,
                        a.tapped_at AS tapped_at, a.status AS status, a.score AS score
@@ -276,10 +311,8 @@ export function listAttendanceExport(date = null) {
   return db.prepare(base + ' ORDER BY a.tapped_at DESC LIMIT 1000').all();
 }
 
-// ---- 주간 점수 기록: 학생 × 날짜 그리드 ----
-// from~to(YYYY-MM-DD) 동안 등록 학생별로 날짜마다 첫 출석의 상태/점수를 모은다.
+// 주간 점수 기록
 export function weeklyScores(from, to) {
-  // 기간 내 날짜 목록 생성 (최대 31일 안전장치)
   const dates = [];
   let cursor = from;
   for (let i = 0; i < 31; i++) {
@@ -295,7 +328,6 @@ export function weeklyScores(from, to) {
     )
     .all();
 
-  // 학생별·날짜별 첫 출석(상태/점수) — MIN(tapped_at) 기준 같은 행의 status/score
   const rows = db
     .prepare(
       `SELECT student_id AS sid, date(tapped_at) AS d,
@@ -306,7 +338,7 @@ export function weeklyScores(from, to) {
     )
     .all(from, to);
 
-  const grid = new Map(); // sid -> { date -> {status, score} }
+  const grid = new Map();
   for (const r of rows) {
     if (!grid.has(r.sid)) grid.set(r.sid, {});
     grid.get(r.sid)[r.d] = { status: r.status, score: r.score ?? 0 };
@@ -335,30 +367,17 @@ export function weeklyScores(from, to) {
 }
 
 // ---- 칭찬 포인트 조작 ----
-/**
- * 특정 학생의 포인트를 지정된 값으로 직접 갱신합니다.
- * @param {number} id - 학생의 고유 ID
- * @param {number} points - 갱신할 포인트 값
- * @returns {object} 갱신된 학생 정보
- */
 export function updateStudentPoints(id, points) {
   db.prepare('UPDATE students SET points = ? WHERE id = ?').run(points, id);
   return db.prepare('SELECT * FROM students WHERE id = ?').get(id);
 }
 
-/**
- * 특정 학생의 포인트를 상대값(delta)만큼 증감시킵니다. (+5, -2 등)
- * @param {number} id - 학생의 고유 ID
- * @param {number} delta - 더하거나 뺄 포인트 양
- * @returns {object} 갱신된 학생 정보
- */
 export function adjustStudentPoints(id, delta) {
   db.prepare('UPDATE students SET points = points + ? WHERE id = ?').run(delta, id);
   return db.prepare('SELECT * FROM students WHERE id = ?').get(id);
 }
 
 // ===== 감정 출석부 통계 =====
-// 기간(from~to, YYYY-MM-DD) 동안의 감정 분포·추이·관심 학생
 const POSITIVE_MOODS = ['great', 'good'];
 const NEGATIVE_MOODS = ['tired', 'sad', 'angry'];
 const MOOD_SCORE = { great: 2, good: 1, soso: 0, tired: -1, sad: -1, angry: -2 };
@@ -385,7 +404,6 @@ export function moodStats(from, to) {
   const neutral = total - positive - negative;
   const score = total ? scoreSum / total : 0;
 
-  // 일별 추이 (from~to 모든 날짜를 채움)
   const dailyMap = new Map();
   for (const r of rows) {
     if (!dailyMap.has(r.d)) dailyMap.set(r.d, {});
@@ -394,7 +412,6 @@ export function moodStats(from, to) {
   }
   const daily = [];
   let cursor = from;
-  // 안전장치: 최대 366일
   for (let i = 0; i < 366; i++) {
     const byMoodDay = dailyMap.get(cursor) ?? {};
     const dayTotal = Object.values(byMoodDay).reduce((a, b) => a + b, 0);
@@ -403,7 +420,6 @@ export function moodStats(from, to) {
     cursor = db.prepare("SELECT date(?, '+1 day') AS d").get(cursor).d;
   }
 
-  // 관심이 필요한 학생 (부정 감정 기록)
   const concernRows = db
     .prepare(
       `SELECT s.id AS id, s.name AS name, a.mood AS mood, COUNT(*) AS c
@@ -438,7 +454,6 @@ export function moodStats(from, to) {
   };
 }
 
-// 학생의 최근 감정 기록 (오래된 → 최신 순, 최대 n개) — AI 체크인 피드백 참고용
 export function recentMoods(studentId, n = 5) {
   return db
     .prepare(
@@ -460,7 +475,6 @@ function weatherFromScore(score, total) {
 
 // ===== 도서 =====
 export function listBooks() {
-  // 각 책의 현재 대여 상태도 함께 (대여중이면 빌린 학생 이름)
   return db
     .prepare(
       `SELECT b.*,
@@ -517,7 +531,6 @@ export function setLoanReview(loanId, rating, review) {
   return db.prepare('SELECT * FROM loans WHERE id = ?').get(loanId);
 }
 
-// 학생 개인 독서 기록장 (반납 완료한 책들)
 export function studentReadingRecord(studentId) {
   return db
     .prepare(
@@ -531,7 +544,6 @@ export function studentReadingRecord(studentId) {
     .all(studentId);
 }
 
-// 학급 독서 온도계 통계
 export function readingStats(goalBooks = 100) {
   const totalRead = db
     .prepare('SELECT COUNT(*) AS c FROM loans WHERE returned_at IS NOT NULL')
@@ -541,7 +553,6 @@ export function readingStats(goalBooks = 100) {
     .get().c;
   const totalBooks = db.prepare('SELECT COUNT(*) AS c FROM books').get().c;
 
-  // 독서왕 순위 (학생별 읽은 권수)
   const ranking = db
     .prepare(
       `SELECT s.id, s.name, COUNT(l.id) AS read_count
@@ -553,7 +564,6 @@ export function readingStats(goalBooks = 100) {
     )
     .all();
 
-  // 최근 한 줄 평
   const recentReviews = db
     .prepare(
       `SELECT l.rating, l.review, l.returned_at,
@@ -655,7 +665,6 @@ export function circuitRecords(studentId = null, stationId = null) {
   sql += ' ORDER BY c.created_at DESC LIMIT 200';
   return db.prepare(sql).all(...args);
 }
-// 개인 체력 성장 그래프: 종목별 시간 변화
 export function circuitGrowth(studentId) {
   const rows = db
     .prepare(
@@ -673,9 +682,133 @@ export function circuitGrowth(studentId) {
   return [...map.values()];
 }
 
-// ===== 💾 데이터 관리: 백업 · 통계 · 내보내기 · 초기화 =====
+// ===== 🔬 지능형 과학실 (Smart Science Lab) =====
+export function listScienceStations() {
+  return db.prepare('SELECT * FROM science_stations ORDER BY name').all();
+}
+export function getScienceStationByCard(cardUid) {
+  return db.prepare('SELECT * FROM science_stations WHERE card_uid = ?').get(cardUid);
+}
+export function addScienceStation({ card_uid, name, zone = '', mission = '' }) {
+  const stmt = db.prepare(
+    'INSERT INTO science_stations (card_uid, name, zone, mission) VALUES (?, ?, ?, ?)'
+  );
+  const info = stmt.run(card_uid, name, zone || '', mission || '');
+  return db.prepare('SELECT * FROM science_stations WHERE id = ?').get(info.lastInsertRowid);
+}
+export function deleteScienceStation(id) {
+  db.prepare('DELETE FROM science_stations WHERE id = ?').run(id);
+}
 
-// 현재 데이터 건수 (데이터 관리 화면 표시용)
+export function recordScienceStationTap(stationId, studentId, note = '') {
+  const stmt = db.prepare(
+    'INSERT INTO science_records (station_id, student_id, note) VALUES (?, ?, ?)'
+  );
+  const info = stmt.run(stationId, studentId, note || '');
+  return db.prepare('SELECT * FROM science_records WHERE id = ?').get(info.lastInsertRowid);
+}
+
+export function listScienceRecords(studentId = null, stationId = null) {
+  let sql = `SELECT r.*, s.name AS student_name, s.student_no, st.name AS station_name, st.zone, st.mission
+               FROM science_records r
+               JOIN students s ON s.id = r.student_id
+               JOIN science_stations st ON st.id = r.station_id`;
+  const where = [];
+  const args = [];
+  if (studentId) { where.push('r.student_id = ?'); args.push(studentId); }
+  if (stationId) { where.push('r.station_id = ?'); args.push(stationId); }
+  if (where.length) sql += ' WHERE ' + where.join(' AND ');
+  sql += ' ORDER BY r.created_at DESC LIMIT 200';
+  return db.prepare(sql).all(...args);
+}
+
+export function studentSciencePassport(studentId) {
+  const allStations = listScienceStations();
+  const completedRows = db
+    .prepare(
+      `SELECT station_id, COUNT(*) AS count, MAX(created_at) AS last_completed_at
+         FROM science_records
+        WHERE student_id = ?
+        GROUP BY station_id`
+    )
+    .all(studentId);
+  const completedMap = new Map(completedRows.map((r) => [r.station_id, r]));
+
+  const passport = allStations.map((st) => {
+    const rec = completedMap.get(st.id);
+    return {
+      stationId: st.id,
+      name: st.name,
+      zone: st.zone,
+      mission: st.mission,
+      completed: !!rec,
+      count: rec?.count ?? 0,
+      lastCompletedAt: rec?.last_completed_at ?? null,
+    };
+  });
+  const total = allStations.length;
+  const completedCount = passport.filter((p) => p.completed).length;
+  return {
+    studentId,
+    total,
+    completedCount,
+    rate: total ? Math.round((completedCount / total) * 100) : 0,
+    stations: passport,
+  };
+}
+
+// ---- 지능형 과학실 교구 & 시약 안전 관리 ----
+export function listScienceTools() {
+  return db
+    .prepare(
+      `SELECT t.*,
+              l.id AS active_loan_id,
+              l.student_id AS borrower_student_id,
+              s.name AS borrower_name,
+              l.borrowed_at AS borrowed_at
+         FROM science_tools t
+         LEFT JOIN science_tool_loans l ON l.tool_id = t.id AND l.returned_at IS NULL
+         LEFT JOIN students s ON s.id = l.student_id
+        ORDER BY t.name`
+    )
+    .all();
+}
+
+export function getScienceToolByCard(cardUid) {
+  return db.prepare('SELECT * FROM science_tools WHERE card_uid = ?').get(cardUid);
+}
+
+export function addScienceTool({ card_uid, name, category = '', safety_rules = '', location = '' }) {
+  const stmt = db.prepare(
+    'INSERT INTO science_tools (card_uid, name, category, safety_rules, location) VALUES (?, ?, ?, ?, ?)'
+  );
+  const info = stmt.run(card_uid, name, category || '', safety_rules || '', location || '');
+  return db.prepare('SELECT * FROM science_tools WHERE id = ?').get(info.lastInsertRowid);
+}
+
+export function deleteScienceTool(id) {
+  db.prepare('DELETE FROM science_tools WHERE id = ?').run(id);
+}
+
+export function activeLoanForScienceTool(toolId) {
+  return db
+    .prepare('SELECT * FROM science_tool_loans WHERE tool_id = ? AND returned_at IS NULL ORDER BY id DESC LIMIT 1')
+    .get(toolId);
+}
+
+export function borrowScienceTool(toolId, studentId) {
+  const info = db
+    .prepare('INSERT INTO science_tool_loans (tool_id, student_id) VALUES (?, ?)')
+    .run(toolId, studentId);
+  return db.prepare('SELECT * FROM science_tool_loans WHERE id = ?').get(info.lastInsertRowid);
+}
+
+export function returnScienceTool(loanId) {
+  db.prepare("UPDATE science_tool_loans SET returned_at = datetime('now','localtime') WHERE id = ?").run(loanId);
+  return db.prepare('SELECT * FROM science_tool_loans WHERE id = ?').get(loanId);
+}
+
+// ===== 💾 데이터 관리: 백업 · 통계 · 내보내기 · 초기화 =====
 export function dataStats() {
   const c = (sql) => db.prepare(sql).get().c;
   return {
@@ -688,10 +821,13 @@ export function dataStats() {
     stations: c('SELECT COUNT(*) AS c FROM stations'),
     shuttle: c('SELECT COUNT(*) AS c FROM shuttle_records'),
     circuit: c('SELECT COUNT(*) AS c FROM circuit_records'),
+    scienceStations: c('SELECT COUNT(*) AS c FROM science_stations'),
+    scienceRecords: c('SELECT COUNT(*) AS c FROM science_records'),
+    scienceTools: c('SELECT COUNT(*) AS c FROM science_tools'),
+    scienceLoans: c('SELECT COUNT(*) AS c FROM science_tool_loans'),
   };
 }
 
-// 전체 DB를 destPath로 안전하게 복사(VACUUM INTO). dest 파일은 미리 없어야 함.
 export function backupTo(destPath) {
   const safe = destPath.replace(/'/g, "''");
   db.exec(`VACUUM INTO '${safe}'`);
@@ -735,7 +871,6 @@ export function exportLoans() {
     .all();
 }
 
-// 셔틀런 + 서킷을 한 표로 (종류/기록 단위 다름)
 export function exportPhysical() {
   const shuttle = db
     .prepare(
@@ -756,25 +891,50 @@ export function exportPhysical() {
   return [...shuttle, ...circuit].sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
 }
 
-// ---- 초기화 (되돌릴 수 없음) ----
+// 지능형 과학실 탐구 기록 + 교구 대여 이력 내보내기
+export function exportScience() {
+  const exploration = db
+    .prepare(
+      `SELECT s.student_no AS student_no, s.name AS student_name, '탐구스테이션' AS kind,
+              st.name AS item_name, st.zone AS category, r.note AS note, r.created_at AS record_time
+         FROM science_records r
+         JOIN students s ON s.id = r.student_id
+         JOIN science_stations st ON st.id = r.station_id`
+    )
+    .all();
+  const toolLoans = db
+    .prepare(
+      `SELECT s.student_no AS student_no, s.name AS student_name, '교구대여' AS kind,
+              t.name AS item_name, t.category AS category,
+              '대여: ' || l.borrowed_at || CASE WHEN l.returned_at IS NOT NULL THEN ' / 반납: ' || l.returned_at ELSE ' (대여중)' END AS note,
+              l.borrowed_at AS record_time
+         FROM science_tool_loans l
+         JOIN students s ON s.id = l.student_id
+         JOIN science_tools t ON t.id = l.tool_id`
+    )
+    .all();
+  return [...exploration, ...toolLoans].sort((a, b) => (a.record_time < b.record_time ? 1 : -1));
+}
+
+// ---- 초기화 ----
 export function resetAttendance() {
   db.exec('DELETE FROM attendance');
 }
 export function resetMoods() {
-  // 감정만 비우고 출석 기록 자체는 보존
   db.exec('UPDATE attendance SET mood = NULL');
 }
 export function resetPoints() {
   db.exec('UPDATE students SET points = 0');
 }
 export function resetLibraryRecords() {
-  // 대여/독서 기록만 삭제 (등록된 도서는 보존)
   db.exec('DELETE FROM loans');
 }
 export function resetPhysicalRecords() {
   db.exec('DELETE FROM shuttle_records; DELETE FROM circuit_records; DELETE FROM physical_records;');
 }
-// 모든 "기록"을 초기화 (학생·도서·스테이션 등록은 보존)
+export function resetScienceRecords() {
+  db.exec('DELETE FROM science_records; DELETE FROM science_tool_loans;');
+}
 export function resetAllRecords() {
   db.exec(`
     DELETE FROM attendance;
@@ -782,10 +942,11 @@ export function resetAllRecords() {
     DELETE FROM shuttle_records;
     DELETE FROM circuit_records;
     DELETE FROM physical_records;
+    DELETE FROM science_records;
+    DELETE FROM science_tool_loans;
     UPDATE students SET points = 0;
   `);
 }
-// 공장 초기화: 등록 정보까지 모든 데이터 삭제
 export function factoryReset() {
   db.exec(`
     DELETE FROM attendance;
@@ -793,6 +954,10 @@ export function factoryReset() {
     DELETE FROM shuttle_records;
     DELETE FROM circuit_records;
     DELETE FROM physical_records;
+    DELETE FROM science_records;
+    DELETE FROM science_tool_loans;
+    DELETE FROM science_tools;
+    DELETE FROM science_stations;
     DELETE FROM books;
     DELETE FROM stations;
     DELETE FROM students;

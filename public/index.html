@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>학생 출석 - CR-100</title>
+    <title>NFC 에듀태그 - 스마트 학급 & 지능형 과학실</title>
 
     <!-- PWA (크롬북 설치형 웹앱) -->
     <!-- crossorigin: 기본인증(또는 쿠키) 뒤에 있을 때 매니페스트·아이콘 요청에도 인증정보를 함께 보내 PWA 설치가 되도록 함 -->
@@ -12,7 +12,7 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="학생출석" />
+    <meta name="apple-mobile-web-app-title" content="NFC 에듀태그" />
     <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
     <link rel="apple-touch-icon" href="icons/icon-192.png" />
 
@@ -36,6 +36,7 @@
       <symbol id="i-library" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6.6c-1.9-1.5-4.3-1.9-6.9-1.9v12.9c2.6 0 5 .4 6.9 1.9 1.9-1.5 4.3-1.9 6.9-1.9V4.7c-2.6 0-5 .4-6.9 1.9Z" /><path d="M12 6.6v12.9" /></g></symbol>
       <symbol id="i-shuttle" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13.6" r="6.9" /><path d="M12 13.6v-3.8" /><path d="M9.9 3.5h4.2M12 3.5v3.2" /></g></symbol>
       <symbol id="i-circuit" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 8.3v7.4M4.4 9.8v4.4M17 8.3v7.4M19.6 9.8v4.4M7 12h10" /></g></symbol>
+      <symbol id="i-science" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v7.3a2 2 0 0 1-.5 1.3L4.4 17.8A2 2 0 0 0 6 21h12a2 2 0 0 0 1.6-3.2l-5.1-7.2a2 2 0 0 1-.5-1.3V2" /><path d="M8.5 2h7M7 16h10" /></g></symbol>
       <symbol id="i-students" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.2" r="3.6" /><path d="M5.6 19.6a6.6 6.6 0 0 1 12.8 0" /></g></symbol>
       <symbol id="i-records" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="16.5" rx="2" /><path d="M9 9.2h6M9 12.7h6M9 16.2h3.6" /></g></symbol>
       <symbol id="i-reset" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14" /><path d="M9.5 7V5.2A1.7 1.7 0 0 1 11.2 3.5h1.6a1.7 1.7 0 0 1 1.7 1.7V7" /><path d="M7 7l.8 11.6a2 2 0 0 0 2 1.9h4.4a2 2 0 0 0 2-1.9L17 7" /><path d="M10.2 10.8v5.4M13.8 10.8v5.4" /></g></symbol>
@@ -56,7 +57,7 @@
             <circle cx="11.5" cy="17" r="2.1" fill="var(--primary, #0064e0)" />
           </svg>
         </span>
-        <span class="brand__text">학생 출석<small>NFC 출석부</small></span>
+        <span class="brand__text">NFC 에듀태그<small>스마트 학급 & 지능형 과학실</small></span>
       </div>
       <div class="header-right">
         <div id="status" class="status status--off">
@@ -76,6 +77,7 @@
       <button class="tab" data-tab="library"><svg class="tab__ic"><use href="#i-library" /></svg>도서 대여</button>
       <button class="tab" data-tab="shuttle"><svg class="tab__ic"><use href="#i-shuttle" /></svg>셔틀런</button>
       <button class="tab" data-tab="circuit"><svg class="tab__ic"><use href="#i-circuit" /></svg>서킷</button>
+      <button class="tab" data-tab="science"><svg class="tab__ic"><use href="#i-science" /></svg>지능형 과학실</button>
       <button class="tab" data-tab="students"><svg class="tab__ic"><use href="#i-students" /></svg>학생 관리</button>
       <button class="tab" data-tab="records"><svg class="tab__ic"><use href="#i-records" /></svg>출석 현황</button>
       <button class="tab" data-tab="reset"><svg class="tab__ic"><use href="#i-reset" /></svg>카드 초기화</button>
@@ -86,9 +88,9 @@
     <!-- 🏠 홈 (홈페이지 스타일 메뉴) -->
     <section id="tab-home" class="tab-panel active">
       <div class="home-hero">
-        <div class="home-hero__badge">NFC ATTENDANCE</div>
-        <h1 class="home-hero__title">우리 반 스마트 교실</h1>
-        <p class="home-hero__sub">카드 한 장으로 출석·감정·독서·운동까지 — AI가 함께하는 학급 운영 도우미</p>
+        <div class="home-hero__badge">NFC EDUTAG & SMART LAB</div>
+        <h1 class="home-hero__title">NFC 에듀태그 스마트 교실</h1>
+        <p class="home-hero__sub">출석·감정·독서·운동부터 지능형 과학실 탐구까지 — AI가 함께하는 올인원 학급 플랫폼</p>
         <div class="home-hero__meta" id="home-today"></div>
       </div>
 
@@ -144,7 +146,7 @@
       </div>
 
       <div class="home-group">
-        <h2 class="home-group__title">체육 활동</h2>
+        <h2 class="home-group__title">체육 & 과학 탐구 활동</h2>
         <div class="home-menu">
           <button class="menu-card" data-goto="shuttle">
             <span class="menu-card__icon"><svg class="ic"><use href="#i-shuttle" /></svg></span>
@@ -155,6 +157,11 @@
             <span class="menu-card__icon"><svg class="ic"><use href="#i-circuit" /></svg></span>
             <span class="menu-card__name">서킷 트레이닝 <i class="ai-chip">AI</i></span>
             <span class="menu-card__desc">스테이션 운동과 AI 성장 피드백</span>
+          </button>
+          <button class="menu-card" data-goto="science">
+            <span class="menu-card__icon"><svg class="ic"><use href="#i-science" /></svg></span>
+            <span class="menu-card__name">지능형 과학실 <i class="ai-chip">NEW</i></span>
+            <span class="menu-card__desc">탐구 패스포트·교구 안전·환경 데이터</span>
           </button>
         </div>
       </div>
@@ -651,6 +658,239 @@
       </div>
     </section>
 
+    <!-- 🔬 지능형 과학실 (Smart Science Lab) -->
+    <section id="tab-science" class="tab-panel">
+      <!-- 실시간 카드 태그 안내 배너 -->
+      <div id="science-banner" class="bigcard bigcard--idle">
+        <div class="bigcard__hint">
+          <b>🔬 지능형 과학실 모드</b> &nbsp;|&nbsp; 
+          ① 학생 카드 태그 → ② 탐구 스테이션 태그(미션 완료) 또는 교구 태그(대여)
+        </div>
+      </div>
+
+      <!-- 1) 🚀 스마트 과학 탐구 패스포트 -->
+      <div class="card">
+        <div class="card-head" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+          <h2>🚀 스마트 과학 탐구 패스포트 (Station Learning)</h2>
+          <div class="toolbar" style="margin:0">
+            <label style="margin:0">학생 선택
+              <select id="sci-student-select"></select>
+            </label>
+          </div>
+        </div>
+        <p class="hint">학생 카드를 태그한 뒤 탐구 스테이션 카드를 대면 스탬프가 자동으로 찍힙니다.</p>
+
+        <div id="sci-passport-view" style="margin-top:14px">
+          <div class="stat stat--accent" style="margin-bottom:14px;max-width:260px">
+            <div class="stat__num" id="sci-progress-num">0%</div>
+            <div class="stat__lbl">탐구 스테이션 달성률 (<span id="sci-progress-count">0/0</span>)</div>
+          </div>
+          <div id="sci-stations-grid" class="passport-grid"></div>
+        </div>
+      </div>
+
+      <!-- 2) 🛡️ 스마트 교구 & 시약 안전 관리 (MSDS) -->
+      <div class="card">
+        <h2>🛡️ 스마트 과학 교구 & 시약 안전 지킴이</h2>
+        <p class="hint">
+          MBL 센서, 디지털 현미경 등 고가 교구를 NFC로 간편하게 대여/반납하고 안전 수칙(MSDS)을 확인합니다.
+        </p>
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th>교구/시약명</th>
+              <th>분류</th>
+              <th>보관 위치</th>
+              <th>현재 상태</th>
+              <th>안전 수칙</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="sci-tools-rows"></tbody>
+        </table>
+      </div>
+
+      <!-- 3) 📡 SciBit: 마이크로비트(Micro:bit) MBL 과학 탐구 연계 (kfcman.link/scibit) -->
+      <div class="card" style="border: 2px solid #5db1ff; background: linear-gradient(180deg, var(--panel), #f0f7ff);">
+        <div class="card-head" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+          <h2>📡 SciBit · 마이크로비트(Micro:bit) MBL 과학 탐구 연계</h2>
+          <div style="display:flex;gap:8px;align-items:center">
+            <a href="https://kfcman.link/scibit" target="_blank" class="ai-btn" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px">
+              🌐 SciBit 플랫폼 열기 (kfcman.link/scibit) ↗
+            </a>
+          </div>
+        </div>
+        <p class="hint">마이크로비트(micro:bit) v2의 내장 센서(온도, 조도, 소리, 가속도) 및 MBL 확장 센서 데이터를 수집하여 학생 패스포트에 기록합니다.</p>
+
+        <!-- 센서 실시간 모니터 대시보드 -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:14px;margin-top:14px">
+          <div style="padding:14px;background:var(--canvas);border-radius:12px;border:1px solid var(--line);text-align:center">
+            <div style="font-size:24px">🌡️</div>
+            <div style="font-size:12px;color:var(--text-mute)">마이크로비트 온도 센서</div>
+            <div id="scibit-temp-val" style="font-size:26px;font-weight:bold;color:var(--primary);margin:6px 0">23.4 ℃</div>
+            <input type="range" id="scibit-temp-slider" min="10" max="40" step="0.1" value="23.4" style="width:100%" />
+          </div>
+
+          <div style="padding:14px;background:var(--canvas);border-radius:12px;border:1px solid var(--line);text-align:center">
+            <div style="font-size:24px">💡</div>
+            <div style="font-size:12px;color:var(--text-mute)">조도(빛) 센서 밝기</div>
+            <div id="scibit-light-val" style="font-size:26px;font-weight:bold;color:#f39c12;margin:6px 0">142 Lux</div>
+            <input type="range" id="scibit-light-slider" min="0" max="255" step="1" value="142" style="width:100%" />
+          </div>
+
+          <div style="padding:14px;background:var(--canvas);border-radius:12px;border:1px solid var(--line);text-align:center">
+            <div style="font-size:24px">🔊</div>
+            <div style="font-size:12px;color:var(--text-mute)">소음/음량 데시벨</div>
+            <div id="scibit-sound-val" style="font-size:26px;font-weight:bold;color:#e74c3c;margin:6px 0">48 dB</div>
+            <input type="range" id="scibit-sound-slider" min="20" max="110" step="1" value="48" style="width:100%" />
+          </div>
+
+          <div style="padding:14px;background:var(--canvas);border-radius:12px;border:1px solid var(--line);text-align:center">
+            <div style="font-size:24px">🧭</div>
+            <div style="font-size:12px;color:var(--text-mute)">3축 가속도/자이로</div>
+            <div id="scibit-accel-val" style="font-size:26px;font-weight:bold;color:#2ecc71;margin:6px 0">1.02 G</div>
+            <input type="range" id="scibit-accel-slider" min="0" max="4" step="0.05" value="1.02" style="width:100%" />
+          </div>
+        </div>
+
+        <div style="margin-top:14px;display:flex;gap:10px;justify-content:flex-end;align-items:center">
+          <span id="scibit-log-msg" class="footnote">센서 값을 조정한 후 학생 패스포트에 실시간으로 기록할 수 있습니다.</span>
+          <button id="scibit-record-btn" class="primary">📥 현재 센서값 패스포트에 기록하기</button>
+        </div>
+      </div>
+
+      <!-- 4) 🤖 SciBot: 햄스터 로봇(Hamster Robot) 피지컬 AI 탐사 연계 (kfcman.link/scibot) -->
+      <div class="card" style="border: 2px solid #2ecc71; background: linear-gradient(180deg, var(--panel), #f2faf5);">
+        <div class="card-head" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+          <h2>🤖 SciBot · 햄스터 로봇 피지컬 AI 환경 탐사 연계</h2>
+          <div style="display:flex;gap:8px;align-items:center">
+            <a href="https://kfcman.link/scibot" target="_blank" class="ai-btn" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg, #2ecc71, #27ae60)">
+              🌐 SciBot 플랫폼 열기 (kfcman.link/scibot) ↗
+            </a>
+          </div>
+        </div>
+        <p class="hint">햄스터S/햄스터 로봇의 근접/바닥 센서와 피지컬 AI를 활용한 자율주행 과학실 탐사 미션 및 임무를 관리합니다.</p>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:16px;margin-top:14px">
+          <!-- 탐사 미션 카드 1 -->
+          <div class="card" style="margin:0;background:var(--canvas);border:1px solid var(--line);border-radius:12px;padding:16px">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span class="passport-card__zone">탐사 미션 A</span>
+              <span id="scibot-status-1" class="tool-badge tool-badge--avail">대기 중</span>
+            </div>
+            <h3 style="margin:8px 0 4px">🌱 스마트 식물 온실 순찰 로봇</h3>
+            <p style="font-size:13px;color:var(--text-mute);margin:0 0 12px">라인트레이서로 화분을 순찰하며 조도와 토양 수분을 자동 탐사합니다.</p>
+            <button class="primary" data-scibot-mission="1" style="width:100%">🚀 로봇 출동 & 탐사 완료 태그</button>
+          </div>
+
+          <!-- 탐사 미션 카드 2 -->
+          <div class="card" style="margin:0;background:var(--canvas);border:1px solid var(--line);border-radius:12px;padding:16px">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span class="passport-card__zone">탐사 미션 B</span>
+              <span id="scibot-status-2" class="tool-badge tool-badge--avail">대기 중</span>
+            </div>
+            <h3 style="margin:8px 0 4px">⚠️ 미지의 위험 구역 장애물 회피</h3>
+            <p style="font-size:13px;color:var(--text-mute);margin:0 0 12px">근접 센서와 자율주행 알고리즘으로 장애물을 피해 샘플을 수거합니다.</p>
+            <button class="primary" data-scibot-mission="2" style="width:100%">🚀 로봇 출동 & 탐사 완료 태그</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 5) 🌡️ 실시간 환경 데이터 비교 탐구 (기상청/에어코리아 vs 과학실 실내) -->
+      <div class="card">
+        <h2>🌡️ 실시간 대기·환경 데이터 비교 탐구대</h2>
+        <p class="hint">우리 동네 실외 공공데이터(기상청·에어코리아)와 과학실 실내 MBL 센서 측정값을 비교 탐구합니다.</p>
+        
+        <div class="sci-env-compare" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:16px;margin-top:14px">
+          <div class="env-box env-box--outdoor" style="padding:16px;background:var(--panel2);border-radius:12px;border:1px solid var(--line)">
+            <h3 style="margin-top:0;font-size:16px;color:var(--primary)">🌤️ 우리 동네 실외 공공데이터</h3>
+            <div style="font-size:14px;line-height:1.8">
+              <div>• 실외 기온: <b id="sci-out-temp">-</b></div>
+              <div>• 미세먼지(PM10): <b id="sci-out-pm10">-</b></div>
+              <div>• 초미세먼지(PM2.5): <b id="sci-out-pm25">-</b></div>
+              <div>• 대기질 등급: <b id="sci-out-grade">-</b></div>
+            </div>
+          </div>
+
+          <div class="env-box env-box--indoor" style="padding:16px;background:var(--panel2);border-radius:12px;border:1px solid var(--line)">
+            <h3 style="margin-top:0;font-size:16px;color:var(--primary)">🏫 지능형 과학실 실내 환경 센서</h3>
+            <div style="display:grid;gap:8px;font-size:14px">
+              <label style="display:flex;justify-content:space-between;align-items:center">
+                실내 기온(℃): <input type="number" id="sci-in-temp" style="width:90px;padding:4px 8px" placeholder="22.5" />
+              </label>
+              <label style="display:flex;justify-content:space-between;align-items:center">
+                실내 습도(%): <input type="number" id="sci-in-hum" style="width:90px;padding:4px 8px" placeholder="45" />
+              </label>
+              <label style="display:flex;justify-content:space-between;align-items:center">
+                실내 CO2(ppm): <input type="number" id="sci-in-co2" style="width:90px;padding:4px 8px" placeholder="650" />
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div id="sci-env-guide" style="margin-top:14px;padding:12px;background:var(--bg);border-radius:8px;font-size:14px;line-height:1.6">
+          💡 <b>과학 탐구 팁:</b> 실내 CO2 농도가 1000ppm 이상이거나 실외 미세먼지가 '좋음'일 때는 창문을 열어 10분간 맞통풍 환기를 실시하세요!
+        </div>
+      </div>
+
+      <!-- 4) 과학실 스테이션 및 교구 등록 관리 (교사용) -->
+      <div class="card">
+        <h2>⚙️ 과학실 탐구 스테이션 & 교구 카드 등록</h2>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));gap:20px;margin-top:10px">
+          <!-- 탐구 스테이션 등록 폼 -->
+          <div>
+            <h3>➕ 탐구 스테이션 등록</h3>
+            <form id="sci-station-form" class="form">
+              <label>스테이션 카드 UID
+                <input id="sci-st-card" placeholder="스테이션 카드를 태그하세요" required autocomplete="off" />
+              </label>
+              <label>스테이션 이름
+                <input id="sci-st-name" placeholder="예: 현미경 관찰 존, MBL 측정 존" required />
+              </label>
+              <label>구역 / 탐구 영역
+                <input id="sci-st-zone" placeholder="예: 생명과학, 물리, 스마트팜" />
+              </label>
+              <label>탐구 미션 내용
+                <textarea id="sci-st-mission" rows="2" placeholder="예: 양파 표피세포 표본을 관찰하고 기공 그리기"></textarea>
+              </label>
+              <button type="submit" class="primary">스테이션 등록</button>
+            </form>
+            <div id="sci-st-msg" class="msg"></div>
+          </div>
+
+          <!-- 과학 교구/시약 등록 폼 -->
+          <div>
+            <h3>➕ 스마트 교구 & 시약 등록</h3>
+            <form id="sci-tool-form" class="form">
+              <label>교구 카드 UID
+                <input id="sci-tl-card" placeholder="교구 카드를 태그하세요" required autocomplete="off" />
+              </label>
+              <label>교구 / 시약 이름
+                <input id="sci-tl-name" placeholder="예: 무선 MBL 온도센서 1호, 디지털 현미경" required />
+              </label>
+              <label>분류
+                <input id="sci-tl-cat" placeholder="예: MBL 센서, 광학기기, 실험시약" />
+              </label>
+              <label>보관 위치
+                <input id="sci-tl-loc" placeholder="예: 1번 보관장 A열, 시약장 2단" />
+              </label>
+              <label>안전 수칙 (MSDS / 주의사항)
+                <textarea id="sci-tl-rules" rows="2" placeholder="예: 보안경 착용 필수, 물에 닿지 않도록 주의"></textarea>
+              </label>
+              <button type="submit" class="primary">교구 등록</button>
+            </form>
+            <div id="sci-tl-msg" class="msg"></div>
+          </div>
+        </div>
+
+        <h3 style="margin-top:24px">등록된 탐구 스테이션 목록</h3>
+        <table class="tbl">
+          <thead><tr><th>스테이션명</th><th>영역/구역</th><th>탐구 미션</th><th>카드 UID</th><th></th></tr></thead>
+          <tbody id="sci-station-list-rows"></tbody>
+        </table>
+      </div>
+    </section>
+
     <!-- 🗑 카드 초기화 -->
     <section id="tab-reset" class="tab-panel">
       <div id="reset-banner" class="bigcard bigcard--idle">
@@ -705,6 +945,7 @@
           <button class="secondary" data-export="points">포인트</button>
           <button class="secondary" data-export="library">도서 대여</button>
           <button class="secondary" data-export="physical">체육 기록</button>
+          <button class="secondary" data-export="science">지능형 과학실 기록</button>
         </div>
       </div>
 
@@ -713,7 +954,7 @@
         <h2>🧹 데이터 초기화</h2>
         <p class="hint">
           <b style="color:var(--sale)">되돌릴 수 없습니다.</b> 초기화 전에 위에서 <b>전체 백업</b>을 먼저 받으세요.
-          아래 "기록 초기화"는 학생·도서 <b>등록 정보는 유지</b>하고 활동 기록만 지웁니다.
+          아래 "기록 초기화"는 학생·도서·스테이션·교구 <b>등록 정보는 유지</b>하고 활동 기록만 지웁니다.
         </p>
         <div class="reset-list">
           <div class="reset-item"><span>📋 출석 기록 <b id="rc-attendance" class="footnote"></b></span><button class="danger" data-reset="attendance" data-label="출석 기록">초기화</button></div>
@@ -721,6 +962,7 @@
           <div class="reset-item"><span>⭐ 포인트 <b id="rc-points" class="footnote"></b></span><button class="danger" data-reset="points" data-label="포인트">초기화</button></div>
           <div class="reset-item"><span>📖 도서 대여 기록 <b id="rc-library" class="footnote"></b></span><button class="danger" data-reset="library" data-label="도서 대여 기록">초기화</button></div>
           <div class="reset-item"><span>🏃 체육 기록 <b id="rc-physical" class="footnote"></b></span><button class="danger" data-reset="physical" data-label="체육 기록">초기화</button></div>
+          <div class="reset-item"><span>🔬 지능형 과학실 기록 <b id="rc-science" class="footnote"></b></span><button class="danger" data-reset="science" data-label="지능형 과학실 기록">초기화</button></div>
         </div>
         <hr class="hr" />
         <div class="reset-list">

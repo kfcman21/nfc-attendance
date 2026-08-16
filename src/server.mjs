@@ -587,6 +587,90 @@ function handleLendingTap(uid) {
   broadcast({ type: 'lending', step: 'unknown', uid });
 }
 
+// 🔬 지능형 과학실: [학생] → [탐구스테이션] 완료, [학생] → [교구] 대여, [교구] 단독 태그 시 반납 또는 안전수칙 안내
+let pendingScience = null; // { student, timer }
+function clearPendingScience() {
+  if (pendingScience?.timer) clearTimeout(pendingScience.timer);
+  pendingScience = null;
+}
+
+function handleScienceTap(uid) {
+  const student = db.getStudentByCard(uid);
+  const station = db.getScienceStationByCard(uid);
+  const tool = db.getScienceToolByCard(uid);
+
+  // 1) 학생 카드 태그
+  if (student) {
+    clearPendingScience();
+    pendingScience = {
+      student,
+      timer: setTimeout(() => {
+        pendingScience = null;
+        broadcast({ type: 'science', step: 'timeout' });
+      }, 20000),
+    };
+    console.log(`[과학실] 학생 태그: ${student.name} — 탐구 스테이션 또는 교구를 태그하세요`);
+    const passport = db.studentSciencePassport(student.id);
+    broadcast({ type: 'science', step: 'student', student, passport });
+    return;
+  }
+
+  // 2) 탐구 스테이션 태그
+  if (station) {
+    if (pendingScience) {
+      const s = pendingScience.student;
+      clearPendingScience();
+      const rec = db.recordScienceStationTap(station.id, s.id);
+      const passport = db.studentSciencePassport(s.id);
+      console.log(`[과학실] ${s.name} · ${station.name} (${station.zone || '미션'}) 탐구 완료!`);
+      broadcast({ type: 'science', step: 'station-completed', student: s, station, record: rec, passport });
+      return;
+    }
+    // 학생 없이 스테이션만 태그 → 스테이션 미션 안내
+    broadcast({ type: 'science', step: 'station-info', station });
+    return;
+  }
+
+  // 3) 과학 교구 및 시약 태그
+  if (tool) {
+    const active = db.activeLoanForScienceTool(tool.id);
+
+    // 학생 다음 교구 태그 → 대여
+    if (pendingScience) {
+      if (active) {
+        broadcast({
+          type: 'science',
+          step: 'error',
+          message: `'${tool.name}'은(는) 이미 대여 중입니다.`,
+          tool,
+        });
+        return;
+      }
+      const borrower = pendingScience.student;
+      clearPendingScience();
+      const loan = db.borrowScienceTool(tool.id, borrower.id);
+      console.log(`[과학실 교구 대여] ${borrower.name} → '${tool.name}'`);
+      broadcast({ type: 'science', step: 'tool-borrowed', student: borrower, tool, loan });
+      return;
+    }
+
+    // 학생 없이 교구만 태그 → 대여 중이면 반납, 아니면 교구 정보 및 안전수칙(MSDS) 표시
+    if (active) {
+      const loan = db.returnScienceTool(active.id);
+      const borrower = db.getStudentById(active.student_id);
+      console.log(`[과학실 교구 반납] '${tool.name}' (반납자: ${borrower?.name ?? '?'})`);
+      broadcast({ type: 'science', step: 'tool-returned', tool, loan, student: borrower });
+      return;
+    }
+
+    // 대여 중이 아니면 안전수칙 및 교구 정보 표시
+    broadcast({ type: 'science', step: 'tool-info', tool });
+    return;
+  }
+
+  broadcast({ type: 'science', step: 'unknown', uid });
+}
+
 // 🗑 카드 초기화: 태그한 카드가 무엇으로 등록됐는지 조회 (수정은 하지 않음)
 function handleLookupTap(uid) {
   const student = db.getStudentByCard(uid);
@@ -595,6 +679,10 @@ function handleLookupTap(uid) {
   if (book) return broadcast({ type: 'lookup', uid, kind: 'book', item: book });
   const station = db.getStationByCard(uid);
   if (station) return broadcast({ type: 'lookup', uid, kind: 'station', item: station });
+  const sciStation = db.getScienceStationByCard(uid);
+  if (sciStation) return broadcast({ type: 'lookup', uid, kind: 'science_station', item: sciStation });
+  const sciTool = db.getScienceToolByCard(uid);
+  if (sciTool) return broadcast({ type: 'lookup', uid, kind: 'science_tool', item: sciTool });
   broadcast({ type: 'lookup', uid, kind: 'none' });
 }
 
@@ -615,6 +703,7 @@ reader.on('card', (uid) => {
   if (mode === 'lending') { handleLendingTap(uid); return; }
   if (mode === 'shuttle') { handleShuttleTap(uid); return; }
   if (mode === 'circuit') { handleCircuitTap(uid); return; }
+  if (mode === 'science') { handleScienceTap(uid); return; }
   if (mode === 'lookup') { handleLookupTap(uid); return; }
 
   const now = Date.now();
@@ -821,9 +910,10 @@ app.post('/api/attendance/:id/mood', (req, res) => {
 // ---- API: 모드 전환 ----
 app.post('/api/mode', (req, res) => {
   const m = req.body.mode || 'attendance';
-  mode = ['attendance', 'lending', 'shuttle', 'circuit', 'lookup'].includes(m) ? m : 'attendance';
+  mode = ['attendance', 'lending', 'shuttle', 'circuit', 'science', 'lookup'].includes(m) ? m : 'attendance';
   clearPending();
   clearPendingCircuit();
+  clearPendingScience();
   console.log(`[모드] ${mode}`);
   broadcast({ type: 'mode', mode });
   broadcast({ type: 'lending', step: mode === 'lending' ? 'on' : 'off' });
@@ -927,6 +1017,99 @@ app.post('/api/loans/:id/review', (req, res) => {
   const updated = db.setLoanReview(Number(req.params.id), rating, review);
   broadcastReading();
   res.json(updated);
+});
+
+// ===== 🔬 지능형 과학실 (Smart Science Lab) API =====
+// 1) 탐구 스테이션 관리
+app.get('/api/science/stations', (req, res) => res.json(db.listScienceStations()));
+
+app.post('/api/science/stations', (req, res) => {
+  const { card_uid, name, zone, mission } = req.body;
+  if (!card_uid || !name) return res.status(400).json({ error: '카드와 스테이션명은 필수입니다.' });
+  if (
+    db.getScienceStationByCard(card_uid) ||
+    db.getScienceToolByCard(card_uid) ||
+    db.getStudentByCard(card_uid) ||
+    db.getBookByCard(card_uid) ||
+    db.getStationByCard(card_uid)
+  ) {
+    return res.status(409).json({ error: '이미 다른 용도로 등록된 카드입니다.' });
+  }
+  try {
+    res.json(db.addScienceStation({ card_uid, name, zone, mission }));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.delete('/api/science/stations/:id', (req, res) => {
+  db.deleteScienceStation(Number(req.params.id));
+  res.json({ ok: true });
+});
+
+// 2) 학생 과학 탐구 패스포트 & 기록
+app.get('/api/science/records', (req, res) => {
+  const sid = req.query.student_id ? Number(req.query.student_id) : null;
+  const stid = req.query.station_id ? Number(req.query.station_id) : null;
+  res.json(db.listScienceRecords(sid, stid));
+});
+
+app.get('/api/science/passport/:studentId', (req, res) => {
+  res.json(db.studentSciencePassport(Number(req.params.studentId)));
+});
+
+// 3) 스마트 교구 & 시약 안전 관리
+app.get('/api/science/tools', (req, res) => res.json(db.listScienceTools()));
+
+app.post('/api/science/tools', (req, res) => {
+  const { card_uid, name, category, safety_rules, location } = req.body;
+  if (!card_uid || !name) return res.status(400).json({ error: '카드와 교구/시약명은 필수입니다.' });
+  if (
+    db.getScienceToolByCard(card_uid) ||
+    db.getScienceStationByCard(card_uid) ||
+    db.getStudentByCard(card_uid) ||
+    db.getBookByCard(card_uid) ||
+    db.getStationByCard(card_uid)
+  ) {
+    return res.status(409).json({ error: '이미 다른 용도로 등록된 카드입니다.' });
+  }
+  try {
+    res.json(db.addScienceTool({ card_uid, name, category, safety_rules, location }));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.delete('/api/science/tools/:id', (req, res) => {
+  db.deleteScienceTool(Number(req.params.id));
+  res.json({ ok: true });
+});
+
+// 수동 대여/반납 (화면 버튼 클릭)
+app.post('/api/science/tools/:id/borrow', (req, res) => {
+  const toolId = Number(req.params.id);
+  const studentId = Number(req.body.student_id);
+  if (!studentId) return res.status(400).json({ error: '학생 ID가 필요합니다.' });
+  const active = db.activeLoanForScienceTool(toolId);
+  if (active) return res.status(400).json({ error: '이미 대여 중인 교구입니다.' });
+  try {
+    const loan = db.borrowScienceTool(toolId, studentId);
+    res.json({ ok: true, loan });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/science/tools/:id/return', (req, res) => {
+  const toolId = Number(req.params.id);
+  const active = db.activeLoanForScienceTool(toolId);
+  if (!active) return res.status(400).json({ error: '대여 중인 교구가 아닙니다.' });
+  try {
+    const loan = db.returnScienceTool(active.id);
+    res.json({ ok: true, loan });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // ---- API: 상태 / 테스트 ----
@@ -1163,6 +1346,23 @@ app.get('/api/export/physical', (req, res) => {
     rows.map((r) => [r.student_no ?? '', r.name ?? '', r.kind, r.value, r.unit, r.created_at])
   );
 });
+app.get('/api/export/science', (req, res) => {
+  const rows = db.exportScience();
+  sendCsv(
+    res,
+    '지능형과학실기록.csv',
+    ['번호', '이름', '구분', '항목명', '영역/분류', '내용/메모', '일시'],
+    rows.map((r) => [
+      r.student_no ?? '',
+      r.student_name ?? '',
+      r.kind ?? '',
+      r.item_name ?? '',
+      r.category ?? '',
+      r.note ?? '',
+      r.record_time ?? '',
+    ])
+  );
+});
 
 // 초기화 (되돌릴 수 없음) — scope별
 app.post('/api/reset', (req, res) => {
@@ -1173,6 +1373,7 @@ app.post('/api/reset', (req, res) => {
     points: db.resetPoints,
     library: db.resetLibraryRecords,
     physical: db.resetPhysicalRecords,
+    science: db.resetScienceRecords,
     records: db.resetAllRecords,
     all: db.factoryReset,
   };

@@ -5,19 +5,19 @@
    - Optimistic VF 대체 폰트 체인(Montserrat → Helvetica/Arial/Noto Sans)
    =========================================================== */
 :root {
-  /* Meta 원색 토큰 */
-  --ink-deep: #0a1317;
-  --ink: #1c1e21;
+  /* Meta 원색 토큰 (진한 굴림체 가독성을 위해 완전한 딥 블랙 적용) */
+  --ink-deep: #000000;
+  --ink: #000000;          /* 순수 블랙으로 글자 선명도 극대화 */
   --canvas: #ffffff;
   --cloud: #f1f4f7;        /* surface-soft */
-  --charcoal: #444950;
-  --mute: #5d6c7b;         /* steel */
-  --stone: #8595a4;
+  --charcoal: #1a1a1a;
+  --mute: #222222;         /* 안내문구도 진하게 */
+  --stone: #444444;
   --hairline: #ced0d4;
   --hairline-soft: #dee3e9;
   --sale: #e41e3f;         /* critical */
-  --success: #31a24c;
-  --warning: #f7b928;
+  --success: #27ae60;
+  --warning: #f39c12;
   --primary: #0064e0;      /* 코발트 (주요 액션) */
   --primary-deep: #0457cb; /* 코발트 pressed */
   --info: #1876f2;         /* fb-blue (포커스/선택) */
@@ -43,24 +43,24 @@
   --radius-lg: 24px;
   --pill: 9999px;
 
-  /* 주아체(Jua) 우선 — 없으면 기존 폰트 체인으로 폴백 */
-  --display: 'Jua', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
-  --sans: 'Jua', 'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  /* 전체 기본 폰트: 일반적인 굴림체(Gulim) */
+  --display: 'Gulim', '굴림', 'Dotum', '돋움', AppleGothic, sans-serif;
+  --sans: 'Gulim', '굴림', 'Dotum', '돋움', AppleGothic, sans-serif;
 }
 
 /* ☾ 다크 모드 = 잉크 캔버스로 반전 (베이스 토큰만 바꾸면 파생 토큰이 따라옴) */
 body.dark {
-  --ink: #e7e9ed;
-  --ink-deep: #f2f4f7;
+  --ink: #ffffff;
+  --ink-deep: #ffffff;
   --canvas: #0a1317;
   --cloud: #18222a;
-  --charcoal: #c2c7cf;
-  --mute: #9aa7b4;
-  --stone: #75828f;
+  --charcoal: #e2e7ef;
+  --mute: #cccccc;
+  --stone: #aaaaaa;
   --hairline: #2b3942;
   --hairline-soft: #1f2b33;
   --sale: #f0284a;
-  --success: #31a24c;
+  --success: #2ecc71;
   --primary: #0091ff;
   --primary-deep: #0064e0;
   --info: #2d88ff;
@@ -72,11 +72,19 @@ body.dark {
 body {
   margin: 0;
   font-family: var(--sans);
+  font-weight: 900;
+  -webkit-text-stroke: 0.3px currentColor;
   background: var(--canvas);
   color: var(--ink);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
-  letter-spacing: -0.005em;
+  letter-spacing: -0.01em;
+}
+
+button, input, select, textarea, label, table, th, td, p, span, div, a, h1, h2, h3, h4, .tab, .card, .hint, .footnote {
+  font-family: var(--sans);
+  font-weight: 900;
+  -webkit-text-stroke: 0.25px currentColor;
 }
 
 ::selection { background: var(--ink); color: var(--canvas); }
@@ -1315,3 +1323,97 @@ body.dark .mood-ai, body.dark .ai-out { background: #1b3145; border-color: var(-
 
 /* ::selection도 블루로 */
 ::selection { background: var(--primary); color: #fff; }
+
+/* ===== 🔬 지능형 과학실 스타일 ===== */
+[data-goto="science"], [data-tab="science"] { --tile: #00b894; }
+
+.passport-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.passport-card {
+  border: 1px solid var(--line);
+  background: var(--panel2);
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+.passport-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--primary);
+}
+.passport-card--done {
+  background: #f0faf5;
+  border-color: #2ecc9a;
+}
+body.dark .passport-card--done {
+  background: #112820;
+  border-color: #2ecc9a;
+}
+
+.passport-card__stamp {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  font-size: 26px;
+  opacity: 0.25;
+  transform: rotate(-10deg);
+}
+.passport-card--done .passport-card__stamp {
+  opacity: 1;
+  color: #2ecc9a;
+  animation: stampPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+@keyframes stampPop {
+  0% { transform: scale(2) rotate(-30deg); opacity: 0; }
+  100% { transform: scale(1) rotate(-10deg); opacity: 1; }
+}
+
+.passport-card__zone {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: var(--pill);
+  background: var(--line);
+  color: var(--text-mute);
+  margin-bottom: 6px;
+}
+.passport-card__name {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0 0 6px;
+  color: var(--text);
+}
+.passport-card__mission {
+  font-size: 13px;
+  color: var(--text-mute);
+  line-height: 1.4;
+  margin: 0 0 10px;
+}
+.passport-card__time {
+  font-size: 11px;
+  color: var(--text-mute);
+  border-top: 1px dashed var(--line);
+  padding-top: 6px;
+}
+
+.tool-badge {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: var(--pill);
+}
+.tool-badge--avail { background: #e8f8f0; color: #2ecc9a; }
+.tool-badge--borrowed { background: #ffeaa7; color: #d63031; }
+body.dark .tool-badge--avail { background: #16382a; color: #55efc4; }
+body.dark .tool-badge--borrowed { background: #4a3c18; color: #fab1a0; }
+

@@ -1,7 +1,7 @@
 {
-  "name": "nfc-attendance",
-  "version": "1.11.0",
-  "description": "CR-100 NFC 리더기 학생 출석 프로그램",
+  "name": "nfc-edutag",
+  "version": "1.12.0",
+  "description": "NFC 에듀태그 - 스마트 학급 & 과학실 올인원 솔루션",
   "type": "module",
   "main": "electron-main.mjs",
   "scripts": {
@@ -23,8 +23,8 @@
     "sharp": "^0.35.2"
   },
   "build": {
-    "appId": "com.nfc.attendance",
-    "productName": "NFC 학생출석",
+    "appId": "com.nfc.edutag",
+    "productName": "NFC 에듀태그",
     "publish": null,
     "asar": false,
     "npmRebuild": false,
@@ -44,7 +44,7 @@
       ]
     },
     "portable": {
-      "artifactName": "NFC학생출석-${version}-portable.exe"
+      "artifactName": "NFC에듀태그-${version}-portable.exe"
     },
     "nsis": {
       "oneClick": false,
@@ -52,8 +52,8 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "NFC 학생출석",
-      "artifactName": "NFC학생출석-${version}-설치.exe"
+      "shortcutName": "NFC 에듀태그",
+      "artifactName": "NFC에듀태그-${version}-설치.exe"
     }
   }
 }

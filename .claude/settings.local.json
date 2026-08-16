@@ -122,7 +122,8 @@
       "Bash(node -e \"const c=require\\('./config.json'\\);const n={...c.neis};n.key=n.key?'\\(키 있음, 길이 '+n.key.length+'\\)':'';console.log\\(JSON.stringify\\(n,null,2\\)\\)\")",
       "Bash(node -e \"console.log\\('config.json neis.key =', JSON.stringify\\(require\\('./config.json'\\).neis.key\\)\\); console.log\\('settings.json neis.key 있음?', !!require\\('./data/settings.json'\\).neis.key\\)\")",
       "Bash(NFC_DISABLE_SERIAL=1 NFC_DISABLE_HTTPS=1 NFC_PORT=3398 node src/server.mjs)",
-      "Bash(timeout 90 ssh -i ~/.ssh/ssh-key-2026-05-25.key -o BatchMode=yes -o ConnectTimeout=15 ubuntu@kfcman.link ' *)"
+      "Bash(timeout 90 ssh -i ~/.ssh/ssh-key-2026-05-25.key -o BatchMode=yes -o ConnectTimeout=15 ubuntu@kfcman.link ' *)",
+      "Bash(node -e \"console.log\\(JSON.stringify\\(require\\('./package.json'\\).build,null,2\\)\\)\")"
     ]
   }
 }

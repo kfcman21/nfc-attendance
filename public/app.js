@@ -62,18 +62,19 @@ document.querySelectorAll('.tab').forEach((btn) => {
     if (btn.dataset.tab === 'library') loadLibrary();
     if (btn.dataset.tab === 'shuttle') loadShuttle();
     if (btn.dataset.tab === 'circuit') loadCircuit();
+    if (btn.dataset.tab === 'science') loadScience();
     if (btn.dataset.tab === 'settings') loadSettings();
     if (btn.dataset.tab === 'data') loadDataManager();
     if (btn.dataset.tab === 'home') renderHomeToday();
     if (btn.dataset.tab !== 'points') lockPointsAdmin(); // 포인트 탭을 떠나면 관리자 모드 자동 잠금
-    if (['live', 'shuttle', 'circuit'].includes(btn.dataset.tab)) loadAirWeather();
+    if (['live', 'shuttle', 'circuit', 'science'].includes(btn.dataset.tab)) loadAirWeather();
     if (btn.dataset.tab === 'live') loadNeisMeal();
     // 탭에 맞는 리더기 모드로 전환 (해당 탭에서만 카드 태그를 그 용도로 처리)
     setMode(TAB_MODE[btn.dataset.tab] || 'attendance');
   });
 });
 
-const TAB_MODE = { library: 'lending', shuttle: 'shuttle', circuit: 'circuit', reset: 'lookup' };
+const TAB_MODE = { library: 'lending', shuttle: 'shuttle', circuit: 'circuit', science: 'science', reset: 'lookup' };
 function setMode(mode) {
   fetch('/api/mode', {
     method: 'POST',
@@ -131,8 +132,8 @@ function bigcard(cls, name, sub) {
 }
 
 function onTap(ev) {
-  // 출석이 아닌 모드 탭(도서/체육/카드초기화)에서는 출석 처리를 건너뜀
-  if (['tab-library', 'tab-shuttle', 'tab-circuit', 'tab-reset'].some((id) => document.getElementById(id)?.classList.contains('active')))
+  // 출석이 아닌 모드 탭(도서/체육/과학실/카드초기화)에서는 출석 처리를 건너뜀
+  if (['tab-library', 'tab-shuttle', 'tab-circuit', 'tab-science', 'tab-reset'].some((id) => document.getElementById(id)?.classList.contains('active')))
     return;
 
   // 학생 등록 화면
@@ -365,6 +366,7 @@ function connectSSE() {
     if (ev.type === 'reading') renderReadingStats(ev.stats);
     if (ev.type === 'shuttle') onShuttle(ev);
     if (ev.type === 'circuit') onCircuit(ev);
+    if (ev.type === 'science') onScience(ev);
     if (ev.type === 'lookup') onLookup(ev);
     if (ev.type === 'raw') onRaw(ev);
     if (ev.type === 'mood') {
@@ -1295,9 +1297,394 @@ async function loadGrowth(studentId) {
     .join('');
 }
 
-// ===== 🗑 카드 초기화 =====
-const KIND_LABEL = { student: '학생', book: '도서', station: '스테이션' };
-const KIND_API = { student: 'students', book: 'books', station: 'stations' };
+// ===== 🔬 지능형 과학실 (Smart Science Lab) =====
+let activeScienceStudent = null;
+
+async function loadScience() {
+  await loadScienceStudents();
+  await loadScienceStations();
+  await loadScienceTools();
+  await loadScienceEnvCompare();
+}
+
+async function loadScienceStudents() {
+  const students = await api('/api/students');
+  const sel = $('#sci-student-select');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">선택하세요</option>' +
+    students.map((s) => `<option value="${s.id}">${displayName(s)}</option>`).join('');
+  
+  if (students.length > 0) {
+    if (!activeScienceStudent) activeScienceStudent = students[0];
+    sel.value = activeScienceStudent.id;
+    loadSciencePassport(activeScienceStudent.id);
+  }
+}
+
+$('#sci-student-select')?.addEventListener('change', (e) => {
+  const sid = Number(e.target.value);
+  if (sid) {
+    activeScienceStudent = { id: sid };
+    loadSciencePassport(sid);
+  }
+});
+
+async function loadSciencePassport(studentId) {
+  if (!studentId) return;
+  try {
+    const data = await api('/api/science/passport/' + studentId);
+    $('#sci-progress-num').textContent = `${data.rate}%`;
+    $('#sci-progress-count').textContent = `${data.completedCount}/${data.total}`;
+    
+    const grid = $('#sci-stations-grid');
+    if (!data.stations.length) {
+      grid.innerHTML = '<div class="empty" style="grid-column:1/-1;padding:24px;text-align:center;color:var(--text-mute)">등록된 탐구 스테이션이 없습니다. 아래 관리 메뉴에서 스테이션을 등록하세요.</div>';
+      return;
+    }
+
+    grid.innerHTML = data.stations.map((st) => `
+      <div class="passport-card ${st.completed ? 'passport-card--done' : ''}">
+        <div class="passport-card__stamp">${st.completed ? '💮' : '⭕'}</div>
+        <div>
+          ${st.zone ? `<span class="passport-card__zone">${st.zone}</span>` : ''}
+          <div class="passport-card__name">${st.name}</div>
+          <div class="passport-card__mission">${st.mission || '탐구 미션을 수행하고 카드를 태그하세요.'}</div>
+        </div>
+        <div class="passport-card__time">
+          ${st.completed ? `✅ 완료 (${st.count}회) · ${st.lastCompletedAt?.slice(5, 16) || ''}` : '미완료'}
+        </div>
+      </div>
+    `).join('');
+  } catch (e) {
+    console.error('과학실 패스포트 로드 실패:', e);
+  }
+}
+
+async function loadScienceStations() {
+  const list = await api('/api/science/stations');
+  const tbody = $('#sci-station-list-rows');
+  if (!tbody) return;
+  if (!list.length) {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty">등록된 스테이션이 없습니다.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = list.map((st) => `
+    <tr>
+      <td><b>${st.name}</b></td>
+      <td>${st.zone || '-'}</td>
+      <td>${st.mission || '-'}</td>
+      <td class="uid">${st.card_uid}</td>
+      <td><button class="danger" data-del-scist="${st.id}">삭제</button></td>
+    </tr>
+  `).join('');
+
+  tbody.querySelectorAll('[data-del-scist]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('이 탐구 스테이션을 삭제할까요?')) return;
+      await fetch('/api/science/stations/' + btn.dataset.delScist, { method: 'DELETE' });
+      loadScienceStations();
+      if (activeScienceStudent) loadSciencePassport(activeScienceStudent.id);
+    });
+  });
+}
+
+$('#sci-station-form')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const body = {
+    card_uid: $('#sci-st-card').value.trim(),
+    name: $('#sci-st-name').value.trim(),
+    zone: $('#sci-st-zone').value.trim(),
+    mission: $('#sci-st-mission').value.trim(),
+  };
+  const res = await fetch('/api/science/stations', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const msg = $('#sci-st-msg');
+  if (res.ok) {
+    msg.className = 'msg ok';
+    msg.textContent = `'${body.name}' 탐구 스테이션 등록 완료!`;
+    e.target.reset();
+    loadScienceStations();
+    if (activeScienceStudent) loadSciencePassport(activeScienceStudent.id);
+  } else {
+    const err = await res.json();
+    msg.className = 'msg err';
+    msg.textContent = err.error || '등록 실패';
+  }
+});
+
+async function loadScienceTools() {
+  const list = await api('/api/science/tools');
+  const tbody = $('#sci-tools-rows');
+  if (!tbody) return;
+  if (!list.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty">등록된 교구/시약이 없습니다.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = list.map((t) => {
+    const isBorrowed = !!t.active_loan_id;
+    const badge = isBorrowed
+      ? `<span class="tool-badge tool-badge--borrowed">대여중 (${t.borrower_name || '학생'} · ${t.borrowed_at?.slice(11, 16) || ''})</span>`
+      : '<span class="tool-badge tool-badge--avail">사용 가능</span>';
+    
+    return `
+      <tr>
+        <td><b>${t.name}</b></td>
+        <td>${t.category || '-'}</td>
+        <td>${t.location || '-'}</td>
+        <td>${badge}</td>
+        <td><button class="ghost" data-rules="${encodeURIComponent(t.safety_rules || '안전 수칙이 등록되지 않았습니다.')}" data-name="${encodeURIComponent(t.name)}">안전수칙 보기</button></td>
+        <td>
+          ${isBorrowed 
+            ? `<button class="secondary" data-return-tool="${t.id}">반납</button>` 
+            : `<button class="primary" data-borrow-tool="${t.id}">대여</button>`}
+          <button class="danger" style="margin-left:6px" data-del-tool="${t.id}">삭제</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  // 이벤트 연결
+  tbody.querySelectorAll('[data-rules]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const name = decodeURIComponent(btn.dataset.name);
+      const rules = decodeURIComponent(btn.dataset.rules);
+      alert(`🛡️ [${name} 안전 수칙 (MSDS)]\n\n${rules}`);
+    });
+  });
+
+  tbody.querySelectorAll('[data-borrow-tool]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const toolId = btn.dataset.borrowTool;
+      if (!activeScienceStudent) {
+        alert('먼저 상단에서 대여할 학생을 선택해 주세요.');
+        return;
+      }
+      const res = await fetch(`/api/science/tools/${toolId}/borrow`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ student_id: activeScienceStudent.id }),
+      });
+      if (res.ok) {
+        loadScienceTools();
+      } else {
+        const err = await res.json();
+        alert(err.error || '대여 실패');
+      }
+    });
+  });
+
+  tbody.querySelectorAll('[data-return-tool]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const toolId = btn.dataset.returnTool;
+      await fetch(`/api/science/tools/${toolId}/return`, { method: 'POST' });
+      loadScienceTools();
+    });
+  });
+
+  tbody.querySelectorAll('[data-del-tool]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('이 교구를 삭제할까요?')) return;
+      await fetch('/api/science/tools/' + btn.dataset.delTool, { method: 'DELETE' });
+      loadScienceTools();
+    });
+  });
+}
+
+$('#sci-tool-form')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const body = {
+    card_uid: $('#sci-tl-card').value.trim(),
+    name: $('#sci-tl-name').value.trim(),
+    category: $('#sci-tl-cat').value.trim(),
+    location: $('#sci-tl-loc').value.trim(),
+    safety_rules: $('#sci-tl-rules').value.trim(),
+  };
+  const res = await fetch('/api/science/tools', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const msg = $('#sci-tl-msg');
+  if (res.ok) {
+    msg.className = 'msg ok';
+    msg.textContent = `'${body.name}' 교구 등록 완료!`;
+    e.target.reset();
+    loadScienceTools();
+  } else {
+    const err = await res.json();
+    msg.className = 'msg err';
+    msg.textContent = err.error || '등록 실패';
+  }
+});
+
+async function loadScienceEnvCompare() {
+  try {
+    const d = await api('/api/today-info');
+    if (d.weather) {
+      $('#sci-out-temp').textContent = d.weather.temp != null ? `${d.weather.temp} ℃` : '-';
+      $('#sci-out-pm10').textContent = d.weather.pm10 != null ? `${d.weather.pm10} ㎍/㎥` : '-';
+      $('#sci-out-pm25').textContent = d.weather.pm25 != null ? `${d.weather.pm25} ㎍/㎥` : '-';
+      $('#sci-out-grade').textContent = d.weather.pmGrade || '-';
+    }
+  } catch {}
+}
+
+function updateScienceEnvGuide() {
+  const co2 = Number($('#sci-in-co2')?.value || 0);
+  const guide = $('#sci-env-guide');
+  if (!guide) return;
+  if (co2 >= 1000) {
+    guide.innerHTML = `⚠️ <b>환기 필요 경보:</b> 실내 CO2 농도가 <b>${co2}ppm</b>으로 높습니다. 즉시 창문을 열어 환기해 주세요!`;
+    guide.style.background = '#ffeaa7';
+  } else {
+    guide.innerHTML = `💡 <b>과학 탐구 팁:</b> 실내 CO2 농도가 1000ppm 미만으로 쾌적합니다. 규칙적인 관찰과 측정을 이어가세요!`;
+    guide.style.background = 'var(--bg)';
+  }
+}
+$('#sci-in-co2')?.addEventListener('input', updateScienceEnvGuide);
+
+// ===== 📡 SciBit (마이크로비트 MBL 센서) 이벤트 =====
+$('#scibit-temp-slider')?.addEventListener('input', (e) => {
+  $('#scibit-temp-val').textContent = `${Number(e.target.value).toFixed(1)} ℃`;
+});
+$('#scibit-light-slider')?.addEventListener('input', (e) => {
+  $('#scibit-light-val').textContent = `${e.target.value} Lux`;
+});
+$('#scibit-sound-slider')?.addEventListener('input', (e) => {
+  $('#scibit-sound-val').textContent = `${e.target.value} dB`;
+});
+$('#scibit-accel-slider')?.addEventListener('input', (e) => {
+  $('#scibit-accel-val').textContent = `${Number(e.target.value).toFixed(2)} G`;
+});
+
+$('#scibit-record-btn')?.addEventListener('click', () => {
+  if (!activeScienceStudent) {
+    alert('먼저 상단에서 학생을 선택해 주세요.');
+    return;
+  }
+  const temp = $('#scibit-temp-val').textContent;
+  const light = $('#scibit-light-val').textContent;
+  const sound = $('#scibit-sound-val').textContent;
+  const accel = $('#scibit-accel-val').textContent;
+  const msg = $('#scibit-log-msg');
+  msg.className = 'footnote';
+  msg.innerHTML = `✅ <b>기록 완료!</b> [${displayName(activeScienceStudent)}] 마이크로비트 센서값 (온도 ${temp}, 조도 ${light}, 소음 ${sound}, 가속도 ${accel})이 저장되었습니다.`;
+  setTimeout(() => {
+    msg.innerHTML = '센서 값을 조정한 후 학생 패스포트에 실시간으로 기록할 수 있습니다.';
+  }, 4000);
+});
+
+// ===== 🤖 SciBot (햄스터 로봇 피지컬 AI 탐사) 이벤트 =====
+document.querySelectorAll('[data-scibot-mission]').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const missionId = btn.dataset.scibotMission;
+    const statusEl = $(`#scibot-status-${missionId}`);
+    if (!activeScienceStudent) {
+      alert('먼저 상단에서 탐사 임무를 수행할 학생을 선택해 주세요.');
+      return;
+    }
+    
+    // 로봇 탐사 출동 시뮬레이션
+    btn.disabled = true;
+    btn.textContent = '🔄 햄스터 로봇 자율주행 탐사 중...';
+    if (statusEl) {
+      statusEl.className = 'tool-badge tool-badge--borrowed';
+      statusEl.textContent = `탐사 진행 중 (${displayName(activeScienceStudent)})`;
+    }
+
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.textContent = '🚀 로봇 출동 & 탐사 완료 태그';
+      if (statusEl) {
+        statusEl.className = 'tool-badge tool-badge--avail';
+        statusEl.textContent = '임무 완수 ✅';
+      }
+      setBannerEl(
+        '#science-banner',
+        'bigcard--ok',
+        `🤖 햄스터 로봇 탐사 완수!`,
+        `${displayName(activeScienceStudent)} 학생의 피지컬 AI 환경 탐사 미션이 성공적으로 완료되었습니다!`
+      );
+    }, 2500);
+  });
+});
+
+// 실시간 과학실 카드 태그 SSE 피드백
+function onScience(ev) {
+  const banner = $('#science-banner');
+  if (!banner) return;
+
+  // 1) 학생 카드 태그
+  if (ev.step === 'student') {
+    activeScienceStudent = ev.student;
+    $('#sci-student-select').value = ev.student.id;
+    loadSciencePassport(ev.student.id);
+    setBannerEl('#science-banner', 'bigcard--ok', displayName(ev.student), '탐구 스테이션 카드를 대거나 교구를 태그하세요!');
+    return;
+  }
+
+  // 2) 탐구 스테이션 완료
+  if (ev.step === 'station-completed') {
+    loadSciencePassport(ev.student.id);
+    setBannerEl('#science-banner', 'bigcard--ok', `🎉 ${ev.station.name} 미션 완료!`, `${displayName(ev.student)} 학생의 패스포트에 스탬프가 찍혔어요!`);
+    return;
+  }
+
+  // 3) 스테이션 정보 안내
+  if (ev.step === 'station-info') {
+    setBannerEl('#science-banner', 'bigcard--dup', `📍 ${ev.station.name}`, ev.station.mission || '학생 카드를 먼저 태그한 후 미션을 완료하세요.');
+    return;
+  }
+
+  // 4) 교구 대여/반납
+  if (ev.step === 'tool-borrowed') {
+    loadScienceTools();
+    setBannerEl('#science-banner', 'bigcard--ok', `📦 ${ev.tool.name} 대여 완료`, `대여자: ${displayName(ev.student)}`);
+    return;
+  }
+  if (ev.step === 'tool-returned') {
+    loadScienceTools();
+    setBannerEl('#science-banner', 'bigcard--ok', `✅ ${ev.tool.name} 반납 완료`, `반납자: ${displayName(ev.student)}`);
+    return;
+  }
+  if (ev.step === 'tool-info') {
+    setBannerEl('#science-banner', 'bigcard--dup', `🛡️ ${ev.tool.name}`, ev.tool.safety_rules ? `안전수칙: ${ev.tool.safety_rules}` : '학생 카드를 태그하여 대여하세요.');
+    return;
+  }
+
+  if (ev.step === 'error') {
+    setBannerEl('#science-banner', 'bigcard--unknown', '알림', ev.message || '처리 오류');
+    return;
+  }
+
+  if (ev.step === 'unknown') {
+    setBannerEl('#science-banner', 'bigcard--unknown', '미등록 카드', `${ev.uid} — 과학실 또는 학생으로 등록하세요.`);
+    return;
+  }
+
+  if (ev.step === 'timeout') {
+    setBannerEl('#science-banner', 'bigcard--idle', '시간 초과', '카드를 다시 리더기에 대주세요.');
+    return;
+  }
+}
+
+const KIND_LABEL = {
+  student: '학생',
+  book: '도서',
+  station: '체육 스테이션',
+  science_station: '과학 탐구 스테이션',
+  science_tool: '과학 교구/시약',
+};
+const KIND_API = {
+  student: 'students',
+  book: 'books',
+  station: 'stations',
+  science_station: 'science/stations',
+  science_tool: 'science/tools',
+};
 let resetTarget = null; // { kind, item, uid }
 
 function onLookup(ev) {
@@ -1962,6 +2349,7 @@ const EXPORT_URL = {
   points: '/api/export/points',
   library: '/api/export/library',
   physical: '/api/export/physical',
+  science: '/api/export/science',
 };
 function renderDataStats(s) {
   const items = [
@@ -1973,6 +2361,10 @@ function renderDataStats(s) {
     ['대여 기록', s.loans],
     ['셔틀런 기록', s.shuttle],
     ['서킷 기록', s.circuit],
+    ['과학실 스테이션', s.scienceStations],
+    ['과학 탐구 기록', s.scienceRecords],
+    ['과학 교구', s.scienceTools],
+    ['교구 대여 기록', s.scienceLoans],
   ];
   $('#data-stats').innerHTML = items
     .map(([k, v]) => `<div class="datacell"><div class="datacell__num">${v ?? 0}</div><div class="datacell__lbl">${k}</div></div>`)
@@ -1984,6 +2376,7 @@ function renderDataStats(s) {
   set('#rc-points', s.points);
   set('#rc-library', s.loans);
   set('#rc-physical', (s.shuttle ?? 0) + (s.circuit ?? 0));
+  set('#rc-science', (s.scienceRecords ?? 0) + (s.scienceLoans ?? 0));
 }
 async function loadDataManager() {
   try {

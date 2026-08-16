@@ -1,8 +1,45 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
-  <!-- NFC 학생 출석 앱 아이콘 — Meta 코발트 타일 + 학생증(🪪)
-       Graphics: Twemoji by Twitter/jdecked, licensed CC-BY 4.0 -->
-  <rect width="256" height="256" rx="56" fill="#0064E0"/>
-  <g transform="translate(40,46) scale(4.88889)">
-<path fill="#DFCEBF" d="M35 26.5a1.5 1.5 0 0 1-1.5 1.5h-31A1.5 1.5 0 0 1 1 26.5v-19A1.5 1.5 0 0 1 2.5 6h31A1.5 1.5 0 0 1 35 7.5v19z"/><path fill="#FFFFF5" d="M14 23a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V13a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v10z"/><path d="M30 15H18a1 1 0 0 1 0-2h12a1 1 0 0 1 0 2zm-4 3a1 1 0 0 0-1-1h-7a1 1 0 0 0 0 2h7a1 1 0 0 0 1-1zm3 4a1 1 0 0 0-1-1H18a1 1 0 0 0 0 2h10a1 1 0 0 0 1-1zm-16 2a1 1 0 0 0 1-1v-.003a.74.74 0 0 0-.34-.623c-.702-.453-1.778-.825-2.746-.991v-.819c.638-.43 1.302-1.206 1.501-2.2.059.033.066.054.132.054.316 0 .545-.411.545-.917 0-.498-.263-.902-.572-.914.06-.215.094-.503.094-.873 0-1.234-1.061-2.714-3.441-2.714-2.115 0-3.439 1.481-3.439 2.714 0 .358.022.652.06.879-.291.044-.52.431-.52.908 0 .506.257.917.573.917.066 0 .008-.021.067-.054.199.994.853 1.77 1.491 2.2v.77c-1.021.132-2.298.545-3.088 1.058a.7.7 0 0 0-.317.584V23a1 1 0 0 0 1 1h8zm6-15a1 1 0 0 0-1-1H5a1 1 0 0 0 0 2h13a1 1 0 0 0 1-1z" fill="#7D7585"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0064E0" />
+      <stop offset="100%" stop-color="#0047A5" />
+    </linearGradient>
+    <linearGradient id="tagGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="100%" stop-color="#F0F4F8" />
+    </linearGradient>
+    <linearGradient id="waveGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00D2FF" />
+      <stop offset="100%" stop-color="#00E676" />
+    </linearGradient>
+  </defs>
+
+  <!-- 메인 배경 둥근 사각형 타일 -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)"/>
+
+  <!-- 스마트 에듀 카드 본체 -->
+  <rect x="96" y="116" width="320" height="280" rx="36" fill="url(#tagGrad)" filter="drop-shadow(0 16px 32px rgba(0,20,60,0.3))"/>
+
+  <!-- 카드 상단 마그네틱/헤더 밴드 -->
+  <path d="M96 152a36 36 0 0 1 36-36h248a36 36 0 0 1 36 36v28H96v-28z" fill="#0052BA"/>
+
+  <!-- 스마트 IC 칩 / 학급 태그 심볼 -->
+  <rect x="136" y="210" width="76" height="60" rx="12" fill="#FFB300"/>
+  <rect x="152" y="222" width="44" height="36" rx="6" fill="#FFA000"/>
+
+  <!-- 학생/클래스 라인 패턴 -->
+  <rect x="236" y="216" width="140" height="16" rx="8" fill="#B0BEC5"/>
+  <rect x="236" y="246" width="96" height="14" rx="7" fill="#CFD8DC"/>
+  <rect x="136" y="316" width="240" height="14" rx="7" fill="#E2E8F0"/>
+  <rect x="136" y="344" width="160" height="14" rx="7" fill="#E2E8F0"/>
+
+  <!-- NFC 무선 전파 & 과학 탐구 웨이브 (우측 상단으로 뻗어나가는 빛나는 웨이브) -->
+  <g transform="translate(320, 70)" stroke="url(#waveGrad)" stroke-width="16" stroke-linecap="round" fill="none">
+    <path d="M20 50 A 45 45 0 0 1 55 85" />
+    <path d="M35 25 A 80 80 0 0 1 95 85" />
+    <path d="M50 0 A 115 115 0 0 1 135 85" />
   </g>
+
+  <!-- 과학 탐구 빛나는 별/스파크 -->
+  <circle cx="440" cy="140" r="10" fill="#00E676"/>
 </svg>
