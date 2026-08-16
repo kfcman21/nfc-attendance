@@ -1417,3 +1417,201 @@ body.dark .passport-card--done {
 body.dark .tool-badge--avail { background: #16382a; color: #55efc4; }
 body.dark .tool-badge--borrowed { background: #4a3c18; color: #fab1a0; }
 
+/* ===== 🤖 인간 협업형(HITL) AI 스튜디오 스타일 ===== */
+.hitl-hero {
+  background: linear-gradient(135deg, rgba(0, 100, 224, 0.08) 0%, rgba(130, 80, 250, 0.12) 100%);
+  border: 1px solid rgba(0, 100, 224, 0.18);
+  border-radius: var(--radius-lg, 16px);
+  padding: 24px 28px;
+  margin-bottom: 20px;
+}
+.hitl-hero__badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  color: var(--primary);
+  background: rgba(0, 100, 224, 0.1);
+  padding: 4px 10px;
+  border-radius: 20px;
+  margin-bottom: 8px;
+}
+.hitl-hero__title {
+  font-size: 24px;
+  font-weight: 800;
+  margin: 0 0 6px;
+  color: var(--text);
+}
+.hitl-hero__sub {
+  font-size: 14px;
+  color: var(--text-mute);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.hitl-subtabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.hitl-subtab {
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px 18px;
+  border-radius: var(--pill);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+.hitl-subtab:hover {
+  border-color: var(--primary);
+}
+.hitl-subtab.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+  box-shadow: 0 4px 12px rgba(0, 100, 224, 0.25);
+}
+
+.hitl-pane {
+  display: none;
+}
+.hitl-pane.active {
+  display: block;
+}
+
+.hitl-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+  margin-top: 14px;
+}
+.hitl-grid-full {
+  grid-column: 1 / -1;
+}
+
+.hitl-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+
+.hitl-result-box {
+  margin-top: 20px;
+  padding: 20px;
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius, 12px);
+  white-space: pre-wrap;
+  line-height: 1.65;
+  font-size: 14.5px;
+  font-family: inherit;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.02);
+}
+
+.hitl-review-types {
+  display: flex;
+  gap: 8px;
+  margin: 14px 0;
+  flex-wrap: wrap;
+}
+.hitl-type-btn {
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  color: var(--text);
+  font-size: 13px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.hitl-type-btn.active {
+  background: rgba(0, 100, 224, 0.12);
+  border-color: var(--primary);
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.hitl-review-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 10px;
+}
+@media (max-width: 800px) {
+  .hitl-review-split {
+    grid-template-columns: 1fr;
+  }
+}
+.hitl-review-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.hitl-box-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 700;
+  font-size: 13.5px;
+}
+.hitl-approved-box {
+  margin-top: 20px;
+  padding: 18px;
+  background: rgba(46, 204, 154, 0.1);
+  border: 1px solid rgba(46, 204, 154, 0.3);
+  border-radius: var(--radius, 12px);
+}
+.hitl-approved-box h3 {
+  margin: 0 0 10px;
+  color: #2ecc9a;
+  font-size: 16px;
+}
+
+.tagging-demo-box {
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius, 12px);
+  padding: 16px;
+  margin-top: 14px;
+}
+.tagging-demo-header {
+  background: var(--panel);
+  padding: 12px 16px;
+  border-radius: 8px;
+  border-left: 4px solid var(--primary);
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+.tagging-options-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+.tagging-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  padding: 14px;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tagging-card h4 {
+  margin: 0 0 4px;
+  font-size: 13.5px;
+  color: var(--primary);
+}
+.tagging-card label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+

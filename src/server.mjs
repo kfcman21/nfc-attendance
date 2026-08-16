@@ -1820,6 +1820,51 @@ app.post('/api/ai/exercise', (req, res) => {
   aiFeedback(res, ai.exercisePrompt({ student, shuttle, circuit: circuitData }));
 });
 
+// ⑤ 교사용 AI-SPARC 수업 지도안 생성 API
+app.post('/api/ai/sparc-plan', (req, res) => {
+  const b = req.body || {};
+  aiFeedback(
+    res,
+    ai.sparcLessonPlanPrompt({
+      grade: b.grade || '초등 5~6학년',
+      subject: b.subject || '실과·정보',
+      topic: b.topic || 'NFC 데이터와 스마트 학급 탐구',
+      academicStandard: b.academicStandard || '[6실04-09] 인공지능과 소프트웨어의 역할을 이해하고 윤리적으로 활용한다.',
+      pedagogyTheory: b.pedagogyTheory || '비고츠키의 사회적 구성주의 및 비계 설정(Scaffolding)',
+      intent: b.intent || '학생들이 데이터의 수집 원리를 이해하고 스스로 비판적 질문을 던지도록 유도',
+    })
+  );
+});
+
+// ⑥ 학생용 AI 감사 추적(AI Audit Trail) 워크시트 생성 API
+app.post('/api/ai/audit-worksheet', (req, res) => {
+  const b = req.body || {};
+  aiFeedback(
+    res,
+    ai.auditWorksheetPrompt({
+      grade: b.grade || '초등 5학년',
+      topic: b.topic || '식물의 광합성과 호흡 원리',
+      concept: b.concept || '식물도 밤에는 산소를 흡수하고 이산화탄소를 배출한다는 사실',
+      misconception: b.misconception || '식물은 밤낮 상관없이 항상 산소만 배출한다는 흔한 오개념',
+    })
+  );
+});
+
+// ⑦ Level 3 HITL 교사-AI 피드백 검토 및 수정 API
+app.post('/api/ai/hitl-review', (req, res) => {
+  const b = req.body || {};
+  const original = b.originalFeedback || '';
+  const guidance = b.teacherGuidance || '';
+  if (!original) return res.status(400).json({ error: '원본 피드백 내용이 없습니다.' });
+  aiFeedback(res, ai.hitlFeedbackReviewPrompt(original, guidance));
+});
+
+// ⑧ 학생 피드백 태깅 통계 분석 API
+app.post('/api/ai/audit-analytics', (req, res) => {
+  const stats = req.body?.stats || {};
+  aiFeedback(res, ai.auditAnalyticsPrompt(stats));
+});
+
 // ===== 📅 오늘 정보 통합 (출석 후 학생에게 보여줄 급식·학사일정·날씨·미세먼지) =====
 app.get('/api/today-info', async (req, res) => {
   const date = new Date().toLocaleDateString('sv-SE');

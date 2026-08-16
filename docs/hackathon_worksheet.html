@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>해커톤 팀 활동 기획서 - NFC 에듀태그</title>
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 0;
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Malgun Gothic', 'Gulim', 'Noto Sans KR', sans-serif;
+      color: #333;
+      background: #fff;
+    }
+    .page {
+      width: 210mm;
+      height: 297mm;
+      padding: 15mm 18mm 12mm 18mm;
+      position: relative;
+      page-break-after: always;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .page:last-child {
+      page-break-after: avoid;
+    }
+
+    /* 상단 검정 헤더 */
+    .top-header {
+      background: #33383f;
+      color: #fff;
+      text-align: center;
+      padding: 8px 0;
+      font-size: 16px;
+      font-weight: bold;
+      letter-spacing: 2px;
+      margin: -15mm -18mm 15px -18mm;
+    }
+
+    /* 대주제 타이틀 */
+    .title-area {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .badge-num {
+      width: 38px;
+      height: 38px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      font-weight: 900;
+      color: #333;
+    }
+    .badge-num.c-yellow { background: #fed156; }
+    .badge-num.c-teal   { background: #55d6be; }
+    .badge-num.c-pink   { background: #fc8d9e; }
+    
+    .title-text {
+      font-size: 24px;
+      font-weight: 900;
+      color: #222;
+    }
+
+    /* 정보 헤더 (분반, 모둠명 등) */
+    .info-bar {
+      border-top: 1.5px solid #666;
+      border-bottom: 1.5px solid #666;
+      padding: 8px 10px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      margin-bottom: 16px;
+      font-weight: bold;
+    }
+    .info-bar span b {
+      color: #0056b3;
+      margin-left: 5px;
+    }
+
+    /* 섹션 블록 */
+    .section-block {
+      margin-bottom: 14px;
+    }
+    .sec-label-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+    .sec-badge {
+      background: #252b36;
+      color: #fff;
+      font-size: 12.5px;
+      font-weight: bold;
+      padding: 4px 12px;
+      border-radius: 4px;
+    }
+    .sec-sub {
+      font-size: 12px;
+      color: #777;
+      font-style: italic;
+    }
+
+    /* 입력 박스 */
+    .content-box {
+      border: 1.5px solid #ccd0d5;
+      border-radius: 4px;
+      padding: 10px 12px;
+      font-size: 12px;
+      line-height: 1.6;
+      background: #fff;
+      color: #111;
+    }
+
+    /* 체크리스트 */
+    .check-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .check-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    .check-box {
+      width: 14px;
+      height: 14px;
+      border: 1.5px solid #555;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: bold;
+      color: #0056b3;
+      margin-top: 2px;
+      flex-shrink: 0;
+    }
+
+    /* 라디오/선택 */
+    .radio-row {
+      display: flex;
+      gap: 25px;
+      align-items: center;
+      font-size: 13px;
+      font-weight: bold;
+    }
+    .radio-btn {
+      width: 14px;
+      height: 14px;
+      border: 1.5px solid #333;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      border-radius: 3px;
+      margin-right: 4px;
+    }
+    .radio-btn.checked {
+      background: #333;
+      color: #fff;
+    }
+
+    /* 동작 흐름 다이어그램 (3단) */
+    .flow-grid {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr auto 1fr;
+      gap: 6px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .flow-col {
+      border: 1.5px solid #ccd0d5;
+      border-radius: 4px;
+      height: 180px;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+    }
+    .flow-head {
+      text-align: center;
+      font-weight: bold;
+      font-size: 13px;
+      padding: 5px 0;
+      border-radius: 4px;
+      margin-bottom: 8px;
+    }
+    .flow-head.c-inp { background: #fed156; }
+    .flow-head.c-pro { background: #55d6be; }
+    .flow-head.c-out { background: #fc8d9e; }
+    .flow-body {
+      font-size: 11.5px;
+      line-height: 1.5;
+      color: #222;
+      flex-grow: 1;
+    }
+    .flow-arrow {
+      font-size: 20px;
+      font-weight: bold;
+      color: #666;
+    }
+
+    /* 테이블 */
+    .custom-tbl {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    .custom-tbl th, .custom-tbl td {
+      border: 1px solid #ccd0d5;
+      padding: 8px 10px;
+      text-align: left;
+    }
+    .custom-tbl th {
+      background: #f1f4f8;
+      font-weight: bold;
+      width: 25%;
+    }
+
+    /* 하단 푸터 */
+    .bottom-footer {
+      display: flex;
+      justify-content: space-between;
+      border-top: 1px solid #ddd;
+      padding-top: 8px;
+      font-size: 10.5px;
+      color: #888;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ==================== PAGE 1 ==================== -->
+  <div class="page">
+    <div>
+      <div class="top-header">해커톤 팀 활동 기획서</div>
+      
+      <div class="title-area">
+        <div class="badge-num c-yellow">1</div>
+        <div class="title-text">문제 찾기</div>
+      </div>
+
+      <div class="info-bar">
+        <span>분반: <b>초등 정보 융합 분반</b></span>
+        <span>모둠명: <b>NFC 에듀태그 팀 (Smart EduLab)</b></span>
+        <span>팀원: <b>박찬규(대표/개발), 팀원A(교육과정), 팀원B(디자인/검증)</b></span>
+      </div>
+
+      <div class="section-block">
+        <div class="sec-label-wrap">
+          <span class="sec-badge">1. 문제 정의</span>
+          <span class="sec-sub">누구의 어떤 페인포인트인지</span>
+        </div>
+        <div class="content-box" style="height: 105px;">
+          • <b>교사의 과중한 학급/과학실 관리 행정력 소모</b>: 매일 아침 학생 출결 체크, 지각생 파악, 학생 마음 상태 파악의 번거로움.<br>
+          • <b>지능형 과학실 탐구 이력 및 안전 관리 부재</b>: 과학실 스테이션(MBL, 현미경 등)별 학생 탐구 이력 관리의 어려움 및 고가 교구/화학 시약(MSDS) 대여/반납과 안전 수칙 안내의 형식화.<br>
+          • <b>분절된 학급 도구</b>: 출석부, 독서 통장, 체육(PAPS) 측정, 학급 화폐가 제각각 분리되어 교사 업무 피로도 누적.
+        </div>
+      </div>
+
+      <div class="section-block">
+        <div class="sec-label-wrap">
+          <span class="sec-badge">2. 지금 방식</span>
+          <span class="sec-sub">지금은 어떻게 하고 있는지 · 불편한 점</span>
+        </div>
+        <div class="content-box" style="height: 105px;">
+          • <b>출결/감정</b>: 종이 출석부나 나이스(NEIS) 수동 입력에 의존하여 학생의 정서 변화나 정시 등교 추이를 직관적으로 파악하기 어려움.<br>
+          • <b>과학실 탐구</b>: 종이 활동지 도장 날인 및 수기 대여 대장에 의존하여 교구 분실 위험이 높고 탐구 데이터 누적 불가능.<br>
+          • <b>체육/독서</b>: 초시계를 들고 수동으로 셔틀런 랩타임을 측정하거나 종이에 적어 체계적인 성장 분석이 어려움.<br>
+          • <b>불편한 점</b>: 클라우드 웹앱은 교실 인터넷 불안정 시 접속이 끊기며, 학생 개인정보(이름, 사진) 유출 우려 상존.
+        </div>
+      </div>
+
+      <div class="section-block">
+        <div class="sec-label-wrap">
+          <span class="sec-badge">3. 사용자</span>
+          <span class="sec-sub">누가 · 어떤 상황에서 쓰는지</span>
+        </div>
+        <div class="content-box" style="height: 100px;">
+          • <b>초·중등 교사</b>: 아침 등교 맞이(출석/감정 AI 케어), 지능형 과학실 스테이션 탐구 수업 및 교구/시약 안전 통제, 체육 PAPS 측정, 학급 문고 및 1인 1역할 학급 화폐(지구 포인트)를 통합 정산할 때.<br>
+          • <b>초등학생</b>: 등교 시, 과학실 탐구 코너 이동 시, 교구 대여 시 본인의 <b>NFC 학생 카드</b>를 리더기에 '톡' 태그할 때.
+        </div>
+      </div>
+    </div>
+
+    <div class="bottom-footer">
+      <span>2026 기업 연계 정보교원 역량강화 프로젝트 · 해커톤 팀 기획서</span>
+      <span>1 / 4</span>
+    </div>
+  </div>
+
+  <!-- ==================== PAGE 2 ==================== -->
+  <div class="page">
+    <div>
+      <div class="top-header">해커톤 팀 활동 기획서</div>
+      
+      <div class="title-area">
+        <div class="badge-num c-teal">2</div>
+        <div class="title-text">기능과 자료</div>
+      </div>
+
+      <div class="info-bar">
+        <span>모둠명: <b>NFC 에듀태그 팀 (Smart EduLab)</b></span>
+      </div>
+
+      <div class="section-block">
+        <div class="sec-label-wrap">
+          <span class="sec-badge">4. 필요 기능</span>
+          <span class="sec-sub">핵심 기능 위주 · 한 줄에 하나</span>
+        </div>
+        <div class="content-box" style="padding: 10px 14px;">
+          <div class="check-list">
+            <div class="check-item"><span class="check-box">✔</span> <b>NFC 원터치 정시 출석 및 점수제</b>: 마감시각 이전 태그 시 만점 부여 및 실시간 대시보드 시각화</div>
+            <div class="check-item"><span class="check-box">✔</span> <b>Upstage Solar AI 감정 출석부</b>: 출석 후 기분 선택 시 초거대 AI의 맞춤형 긍정 응원 메시지 생성</div>
+            <div class="check-item"><span class="check-box">✔</span> <b>스마트 과학 탐구 패스포트</b>: 과학실 스테이션별 NFC 태깅 미션 완주 스탬프 랠리 자동화</div>
+            <div class="check-item"><span class="check-box">✔</span> <b>스마트 교구 & 시약 안전 지킴이</b>: NFC 교구 원터치 대여/반납 및 MSDS 실험 안전 수칙 실시간 팝업</div>
+            <div class="check-item"><span class="check-box">✔</span> <b>SciBit 마이크로비트 MBL 연계</b>: micro:bit v2 센서(온도·조도·소음·가속도) 실시간 수집 및 기록 (kfcman.link/scibit)</div>
+            <div class="check-item"><span class="check-box">✔</span> <b>SciBot 햄스터 피지컬 AI 탐사 연계</b>: 햄스터 로봇 온실 순찰 & 자율주행 탐사 미션 스탬프 발급 (kfcman.link/scibot)</div>
+            <div class="check-item"><span class="check-box">✔</span> <b>스마트 PAPS 셔틀런 & 서킷</b>: 반환점 태깅으로 왕복달리기 자동 기록 및 Solar AI 체력 코칭 리포트</div>
+            <div class="check-item"><span class="check-box">✔</span> <b>손바닥 도서관 & 지구 포인트 상점</b>: 학급문고 원터치 대여 및 1인 1역할 보상 학급 화폐 경제 실습</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-block">
+        <div class="sec-label-wrap">
+          <span class="sec-badge">5. 입력 자료</span>
+          <span class="sec-sub">넣을 자료 · 데이터 · 예시 문서</span>
+        </div>
+        <div class="content-box" style="height: 90px;">
+          • <b>학생 및 교구 데이터</b>: 학생 번호, 카드 UID, 과학실 스테이션 정보, 교구/시약 보관 위치 및 MSDS 안전 수칙.<br>
+          • <b>센서 및 공공데이터</b>: micro:bit MBL 센서값, 기상청 단기예보(기온/날씨), 에어코리아 미세먼지(PM10/PM2.5), NEIS 급식.<br>
+          • <b>보안 API 키</b>: Upstage Solar API Key (AES-256-GCM 암호화 보관).
+        </div>
+      </div>
+
+      <div class="section-block">
+        <div class="sec-label-wrap">
+          <span class="sec-badge">6. 만들 방식</span>
+          <span class="sec-sub">택1 또는 혼합</span>
+        </div>
+        <div class="content-box" style="padding: 10px 14px;">
+          <div class="radio-row">
+            <span><span class="radio-btn"></span> 에이전트</span>
+            <span><span class="radio-btn"></span> 바이브코딩</span>
+            <span><span class="radio-btn checked">✔</span> <b>혼합 (Hybrid) — [Electron/Node 바이브코딩 + Upstage Solar AI 에이전트]</b></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-block">
+        <div class="sec-label-wrap">
+          <span class="sec-badge">7. 사용 도구</span>
+          <span class="sec-sub">쓸 도구 이름</span>
+        </div>
+        <div class="content-box" style="height: 50px;">
+          Node.js, Express, Electron, electron-builder, SQLite3, SerialPort, HTML5/CSS3(진한 굴림체), Upstage Solar LLM API
+        </div>
+      </div>
+    </div>
+
+    <div class="bottom-footer">
+      <span>2026 기업 연계 정보교원 역량강화 프로젝트 · 해커톤 팀 기획서</span>
+      <span>2 / 4</span>
+    </div>
+  </div>
+
+  <!-- ==================== PAGE 3 ==================== -->
+  <div class="page">
+    <div>
+      <div class="top-header">해커톤 팀 활동 기획서</div>
+      
+      <div class="title-area">
+        <div class="badge-num c-pink">3</div>
+        <div class="title-text">동작 흐름</div>
+      </div>
+
+      <div class="info-bar">
+        <span>모둠명: <b>NFC 에듀태그 팀 (Smart EduLab)</b></span>
+      </div>
+
+      <div class="section-block">
+        <div class="sec-label-wrap">
+          <span class="sec-badge">8. 동작 흐름</span>
+          <span class="sec-sub">단계별 내용 · 글 또는 그림</span>
+        </div>
+        
+        <div class="flow-grid">
+          <!-- 입력 -->
+          <div class="flow-col">
+            <div class="flow-head c-inp">입력 (Input)</div>
+            <div class="flow-body">
+              • <b>NFC 카드 태그</b><br>
+              - 학생 카드 (학생 식별)<br>
+              - 스테이션 카드 (탐구 완료)<br>
+              - 교구 카드 (대여/반납)<br>
+              - 책 카드 (도서 대여)<br>
+              • <b>마이크로비트 MBL 센서</b><br>
+              - 온도, 조도, 소음, 가속도<br>
+              • <b>햄스터 로봇 미션 출동</b>
+            </div>
+          </div>
+
+          <div class="flow-arrow">➔</div>
+
+          <!-- 처리 -->
+          <div class="flow-col">
+            <div class="flow-head c-pro">처리 (Process)</div>
+            <div class="flow-body">
+              • <b>리더기 모드별 분기 판별</b><br>
+              - 출석 / 과학실 / 도서 / 체육<br>
+              • <b>로컬 SQLite 트랜잭션</b><br>
+              - 출결, 스탬프, 대여 상태 기록<br>
+              • <b>Upstage Solar AI 분석</b><br>
+              - 감정 체크인 & 체력 피드백<br>
+              • <b>SSE 실시간 브로드캐스트</b>
+            </div>
+          </div>
+
+          <div class="flow-arrow">➔</div>
+
+          <!-- 결과 -->
+          <div class="flow-col">
+            <div class="flow-head c-out">결과 (Output)</div>
+            <div class="flow-body">
+              • <b>대형 모니터 실시간 안내</b><br>
+              - 출석 완료 & 획득 점수<br>
+              - Solar AI 따뜻한 격려 팝업<br>
+              - 패스포트 스탬프 발급 (💮)<br>
+              - 교구 대여 현황 & MSDS 표출<br>
+              • <b>원클릭 엑셀(CSV) 저장</b><br>
+              - 나이스/생활기록부 반영
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-block">
+        <div class="sec-label-wrap">
+          <span class="sec-badge">9. 멘토 질문</span>
+          <span class="sec-sub">막힌 것 · 멘토에게 물어볼 것</span>
+        </div>
+        <div class="content-box" style="height: 140px; line-height: 1.7;">
+          1. <b>하드웨어 호환성</b>: 학교 컴퓨터실마다 OS(Win 10/11)와 COM 포트 번호가 다른데, 시리얼 포트 자동 감지(Auto-detect) 및 USB HID 키보드 모드 겸용 구조가 안정적인지 점검받고 싶습니다.<br>
+          2. <b>피지컬 교구 다이렉트 연동</b>: 지능형 과학실의 마이크로비트(SciBit) 및 햄스터 로봇(SciBot) 데이터를 브라우저의 Web Serial/Bluetooth API로 연동할 때의 보안 가이드라인이 궁금합니다.<br>
+          3. <b>오프라인 AI 폴백(Fallback)</b>: 교실 내 인터넷이 일시적으로 끊겼을 때 Upstage Solar AI 호출 실패를 대비한 오프라인 룰베이스 피드백 전환 설계가 적절한지 자문을 구합니다.
+        </div>
+      </div>
+    </div>
+
+    <div class="bottom-footer">
+      <span>2026 기업 연계 정보교원 역량강화 프로젝트 · 해커톤 팀 기획서</span>
+      <span>3 / 4</span>
+    </div>
+  </div>
+
+  <!-- ==================== PAGE 4 ==================== -->
+  <div class="page">
+    <div>
+      <div class="top-header">해커톤 팀 활동 기획서</div>
+      
+      <div class="title-area">
+        <div class="badge-num c-yellow">4</div>
+        <div class="title-text">목표 정하기</div>
+      </div>
+
+      <div class="info-bar">
+        <span>모둠명: <b>NFC 에듀태그 팀 (Smart EduLab)</b></span>
+      </div>
+
+      <div class="section-block">
+        <div class="sec-label-wrap">
+          <span class="sec-badge">10. 결과물 이름</span>
+          <span class="sec-sub">가칭 · 나중에 바꿔도 됨</span>
+        </div>
+        <div class="content-box" style="font-size: 15px; font-weight: bold; color: #0056b3; padding: 10px 14px;">
+          NFC 에듀태그 (NFC EduTag) - 스마트 학급 & 지능형 과학실 올인원 솔루션
+        </div>
+      </div>
+
+      <div class="section-block">
+        <div class="sec-label-wrap">
+          <span class="sec-badge">11. 한 줄 소개</span>
+          <span class="sec-sub">만들려는 것 한 문장</span>
+        </div>
+        <div class="content-box" style="font-size: 13px; font-weight: bold; line-height: 1.6; padding: 10px 14px;">
+          "카드 한 장으로 학생 출결·감정 케어부터 지능형 과학실 MBL 탐구·로봇 피지컬 AI까지 원터치로 해결하는 미래형 스마트 스쿨 올인원 솔루션"
+        </div>
+      </div>
+
+      <div class="section-block">
+        <div class="sec-label-wrap">
+          <span class="sec-badge">12. 역할 분담</span>
+          <span class="sec-sub">팀원별 담당</span>
+        </div>
+        <table class="custom-tbl">
+          <thead>
+            <tr>
+              <th>이름</th>
+              <th>담당 업무 및 역할</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>박찬규 (대표/개발)</b></td>
+              <td>전체 아키텍처 설계, Electron 데스크톱 앱 및 Node 서버/SQLite DB 구축, 지능형 과학실(SciBit/SciBot) 연계, Upstage Solar AI 엔진 통합 및 패키징 빌드</td>
+            </tr>
+            <tr>
+              <td><b>팀원 A (교육과정)</b></td>
+              <td>2022 개정 교육과정 연계 교과별 탐구 미션 및 교수·학습 활동지 개발, 과학 교구/시약 MSDS 물질안전보건자료 텍스트 데이터베이스 정리</td>
+            </tr>
+            <tr>
+              <td><b>팀원 B (디자인/검증)</b></td>
+              <td>공식 3D 인포그래픽 포스터 디자인, 전자칠판 최적화 진한 굴림체 UI/CSS 튜닝, 학교 현장 시연 테스트 및 사용자 피드백 수집</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="section-block">
+        <div class="sec-label-wrap">
+          <span class="sec-badge">13. 완성 기준</span>
+          <span class="sec-sub">이것이 되면 완성</span>
+        </div>
+        <div class="content-box" style="padding: 10px 14px; line-height: 1.6;">
+          1. <b>완전 독립형 배포</b>: 인터넷이나 추가 설치 없이 학교 PC에서 <code>NFC에듀태그.exe</code> 더블클릭만으로 완벽 구동.<br>
+          2. <b>NFC 올인원 다중 모드</b>: 출석·감정 체크, 과학실 패스포트 스탬프 발급, 교구 대여/반납이 1초 내에 오류 없이 처리.<br>
+          3. <b>지능형 과학실 융합</b>: <code>kfcman.link/scibit</code> micro:bit 센서 수집 및 <code>kfcman.link/scibot</code> 햄스터 로봇 탐사가 연동.<br>
+          4. <b>초거대 AI 및 보안</b>: Upstage Solar AI 피드백이 실시간 생성되고, API 키와 학생 정보가 AES-256 로컬 암호화 보관.<br>
+          5. <b>데이터 관리</b>: 모든 활동 기록이 엑셀(CSV)로 즉시 다운로드되고 전체 백업/복원이 가능.
+        </div>
+      </div>
+    </div>
+
+    <div class="bottom-footer">
+      <span>2026 기업 연계 정보교원 역량강화 프로젝트 · 해커톤 팀 기획서</span>
+      <span>4 / 4</span>
+    </div>
+  </div>
+
+</body>
+</html>

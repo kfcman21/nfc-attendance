@@ -63,6 +63,7 @@ document.querySelectorAll('.tab').forEach((btn) => {
     if (btn.dataset.tab === 'shuttle') loadShuttle();
     if (btn.dataset.tab === 'circuit') loadCircuit();
     if (btn.dataset.tab === 'science') loadScience();
+    if (btn.dataset.tab === 'hitl') initHitlTab();
     if (btn.dataset.tab === 'settings') loadSettings();
     if (btn.dataset.tab === 'data') loadDataManager();
     if (btn.dataset.tab === 'home') renderHomeToday();
@@ -2525,7 +2526,14 @@ themeBtn.addEventListener('click', () => {
 // 메뉴 카드 클릭 → 해당 탭 버튼을 눌러 기존 탭 전환 로직을 그대로 사용
 document.querySelectorAll('.menu-card[data-goto]').forEach((card) => {
   card.addEventListener('click', () => {
-    document.querySelector(`.tab[data-tab="${card.dataset.goto}"]`)?.click();
+    const targetTab = card.dataset.goto;
+    const subtab = card.dataset.subtab;
+    document.querySelector(`.tab[data-tab="${targetTab}"]`)?.click();
+    if (subtab) {
+      setTimeout(() => {
+        document.querySelector(`.hitl-subtab[data-hitl-tab="${subtab}"]`)?.click();
+      }, 50);
+    }
   });
 });
 
@@ -2735,3 +2743,269 @@ loadAirWeather(); // 미세먼지·날씨 위젯 (사용 설정 시에만 표시
 setInterval(() => loadAirWeather(true), 600000); // 10분마다 갱신
 loadNeisMeal(); // 오늘 급식 위젯 (사용 설정 시에만 표시)
 loadNeisSchedule(); // 학사일정 위젯 (사용 설정 시에만 표시)
+
+// ==============================================================================
+// 🤖 인간 협업형(HITL) AI 교육 스튜디오 모듈
+// ==============================================================================
+let hitlInitialized = false;
+
+function initHitlTab() {
+  if (hitlInitialized) return;
+  hitlInitialized = true;
+
+  // 1. 서브 탭 전환 로직
+  document.querySelectorAll('.hitl-subtab').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.hitl-subtab').forEach((b) => b.classList.remove('active'));
+      document.querySelectorAll('.hitl-pane').forEach((p) => p.classList.remove('active'));
+      btn.classList.add('active');
+      const targetPane = $('#subtab-' + btn.dataset.hitlTab);
+      if (targetPane) targetPane.classList.add('active');
+    });
+  });
+
+  // 2. [서브 탭 1] AI-SPARC 수업 지도안 생성
+  const sparcGenBtn = $('#sparc-generate-btn');
+  const sparcResultBox = $('#sparc-result');
+  const sparcPrintBtn = $('#sparc-print-btn');
+  const sparcCopyBtn = $('#sparc-copy-btn');
+
+  sparcGenBtn?.addEventListener('click', async () => {
+    const payload = {
+      grade: $('#sparc-grade')?.value,
+      subject: $('#sparc-subject')?.value,
+      topic: $('#sparc-topic')?.value,
+      academicStandard: $('#sparc-standard')?.value,
+      pedagogyTheory: $('#sparc-pedagogy')?.value,
+      intent: $('#sparc-intent')?.value,
+    };
+
+    sparcGenBtn.disabled = true;
+    sparcResultBox.style.display = 'block';
+    sparcResultBox.innerHTML = '<span class="mood-ai--loading">🎓 2022 개정 성취기준 및 교육학 이론(AI-SPARC)에 기반하여 지도안을 설계 중입니다…</span>';
+
+    try {
+      const res = await fetch('/api/ai/sparc-plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || `HTTP ${res.status}`);
+
+      sparcResultBox.textContent = data.text;
+      sparcPrintBtn.style.display = 'inline-block';
+      sparcCopyBtn.style.display = 'inline-block';
+    } catch (err) {
+      sparcResultBox.textContent = '❌ 지도안 생성 실패: ' + err.message;
+    } finally {
+      sparcGenBtn.disabled = false;
+    }
+  });
+
+  sparcCopyBtn?.addEventListener('click', () => {
+    navigator.clipboard.writeText(sparcResultBox.textContent).then(() => {
+      alert('📋 수업 지도안 내용이 클립보드에 복사되었습니다.');
+    });
+  });
+
+  sparcPrintBtn?.addEventListener('click', () => {
+    const win = window.open('', '_blank');
+    win.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>2022 개정 교육과정 연계 HITL 수업 지도안</title>
+        <style>
+          body { font-family: sans-serif; line-height: 1.6; padding: 30px; color: #222; }
+          h1 { border-bottom: 2px solid #0064e0; padding-bottom: 10px; font-size: 20px; }
+          pre { white-space: pre-wrap; font-family: inherit; font-size: 14px; background: #f8f9fa; padding: 16px; border-radius: 8px; }
+        </style>
+      </head>
+      <body>
+        <h1>🎓 인간 협업형(HITL) 교수·학습 지도안</h1>
+        <pre>${sparcResultBox.textContent}</pre>
+        <script>window.print();</script>
+      </body>
+      </html>
+    `);
+    win.document.close();
+  });
+
+  // 3. [서브 탭 2] Level 3 HITL 교사 피드백 검토 및 승인 센터
+  let currentReviewType = 'mood';
+  document.querySelectorAll('.hitl-type-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.hitl-type-btn').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentReviewType = btn.dataset.reviewType;
+      $('#hitl-fetch-draft')?.click();
+    });
+  });
+
+  const fetchDraftBtn = $('#hitl-fetch-draft');
+  const draftTextArea = $('#hitl-draft-text');
+  const teacherGuideArea = $('#hitl-teacher-guide');
+  const hitlRefineBtn = $('#hitl-refine-btn');
+  const hitlApproveBtn = $('#hitl-approve-btn');
+  const hitlApprovedBox = $('#hitl-approved-box');
+  const hitlApprovedContent = $('#hitl-approved-content');
+
+  fetchDraftBtn?.addEventListener('click', async () => {
+    draftTextArea.value = 'AI 피드백 초안을 불러오는 중...';
+    try {
+      const endpoint = currentReviewType === 'friendship' ? '/api/ai/friendship' : '/api/ai/mood';
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || `HTTP ${res.status}`);
+      draftTextArea.value = data.text;
+    } catch (err) {
+      draftTextArea.value = '초안 불러오기 실패: ' + err.message;
+    }
+  });
+
+  hitlRefineBtn?.addEventListener('click', async () => {
+    const original = draftTextArea.value.trim();
+    const guidance = teacherGuideArea.value.trim();
+    if (!original) return alert('검토할 AI 초안이 없습니다.');
+    if (!guidance) return alert('선생님의 수정 지침을 입력해 주세요.');
+
+    hitlRefineBtn.disabled = true;
+    try {
+      const res = await fetch('/api/ai/hitl-review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ originalFeedback: original, teacherGuidance: guidance }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || `HTTP ${res.status}`);
+      draftTextArea.value = data.text;
+      alert('✨ 선생님의 교육적 관점을 반영하여 피드백이 재작성되었습니다.');
+    } catch (err) {
+      alert('재작성 실패: ' + err.message);
+    } finally {
+      hitlRefineBtn.disabled = false;
+    }
+  });
+
+  hitlApproveBtn?.addEventListener('click', () => {
+    const finalContent = draftTextArea.value.trim();
+    if (!finalContent) return alert('승인할 피드백 내용이 없습니다.');
+    hitlApprovedBox.style.display = 'block';
+    hitlApprovedContent.textContent = finalContent;
+    alert('✅ 선생님의 최종 검토 및 승인이 완료되었습니다! (Level 3 HITL 안전 루프 달성)');
+  });
+
+  // 4. [서브 탭 3] AI 감사 추적 활동지 제작
+  const auditGenBtn = $('#audit-generate-btn');
+  const auditResultBox = $('#audit-result');
+  const auditPrintBtn = $('#audit-print-btn');
+  const auditCopyBtn = $('#audit-copy-btn');
+
+  auditGenBtn?.addEventListener('click', async () => {
+    const payload = {
+      grade: $('#audit-grade')?.value,
+      topic: $('#audit-topic')?.value,
+      concept: $('#audit-concept')?.value,
+      misconception: $('#audit-misconception')?.value,
+    };
+
+    auditGenBtn.disabled = true;
+    auditResultBox.style.display = 'block';
+    auditResultBox.innerHTML = '<span class="mood-ai--loading">📝 4단계 AI 감사 추적(AI Audit Trail) 워크시트를 생성 중입니다…</span>';
+
+    try {
+      const res = await fetch('/api/ai/audit-worksheet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || `HTTP ${res.status}`);
+
+      auditResultBox.textContent = data.text;
+      auditPrintBtn.style.display = 'inline-block';
+      auditCopyBtn.style.display = 'inline-block';
+    } catch (err) {
+      auditResultBox.textContent = '❌ 활동지 생성 실패: ' + err.message;
+    } finally {
+      auditGenBtn.disabled = false;
+    }
+  });
+
+  auditCopyBtn?.addEventListener('click', () => {
+    navigator.clipboard.writeText(auditResultBox.textContent).then(() => {
+      alert('📋 활동지 서식이 복사되었습니다.');
+    });
+  });
+
+  auditPrintBtn?.addEventListener('click', () => {
+    const win = window.open('', '_blank');
+    win.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>학생용 AI 감사 추적(AI Audit Trail) 활동지</title>
+        <style>
+          body { font-family: sans-serif; line-height: 1.6; padding: 30px; color: #222; }
+          h1 { border-bottom: 2px solid #0064e0; padding-bottom: 10px; font-size: 20px; }
+          pre { white-space: pre-wrap; font-family: inherit; font-size: 14px; background: #f8f9fa; padding: 16px; border-radius: 8px; border: 1px solid #ddd; }
+        </style>
+      </head>
+      <body>
+        <h1>📝 [학생용] AI 감사 추적(AI Audit Trail) 활동지</h1>
+        <pre>${auditResultBox.textContent}</pre>
+        <script>window.print();</script>
+      </body>
+      </html>
+    `);
+    win.document.close();
+  });
+
+  // 5. [서브 탭 4] 피드백 태깅 시뮬레이터
+  const taggingSubmitBtn = $('#tagging-submit-btn');
+  const taggingResultBox = $('#tagging-feedback-result');
+
+  taggingSubmitBtn?.addEventListener('click', async () => {
+    const correctVal = document.querySelector('input[name="tag-correct"]:checked')?.value;
+    const clearVal = document.querySelector('input[name="tag-clear"]:checked')?.value;
+    const toneVal = document.querySelector('input[name="tag-tone"]:checked')?.value;
+
+    const stats = {
+      totalCount: 1,
+      correctCount: correctVal === 'good' ? 1 : 0,
+      errorCount: correctVal === 'error' ? 1 : 0,
+      clearCount: clearVal === 'good' ? 1 : 0,
+      difficultCount: clearVal === 'hard' ? 1 : 0,
+      toneGoodCount: toneVal === 'good' ? 1 : 0,
+      toneAwkwardCount: toneVal === 'awkward' ? 1 : 0,
+    };
+
+    taggingSubmitBtn.disabled = true;
+    taggingResultBox.style.display = 'block';
+    taggingResultBox.innerHTML = '<span class="mood-ai--loading">🏷️ 메타인지 태깅 데이터를 분석하여 맞춤형 피드백을 구성 중입니다…</span>';
+
+    try {
+      const res = await fetch('/api/ai/audit-analytics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stats }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || `HTTP ${res.status}`);
+
+      taggingResultBox.innerHTML = `
+        <div style="font-weight:700; color:var(--primary); margin-bottom:8px">📊 나의 피드백 태깅 결과 및 AI 리터러시 진단:</div>
+        <div>${data.text}</div>
+      `;
+    } catch (err) {
+      taggingResultBox.textContent = '❌ 분석 실패: ' + err.message;
+    } finally {
+      taggingSubmitBtn.disabled = false;
+    }
+  });
+}
