@@ -95,22 +95,86 @@
         <div class="home-hero__meta" id="home-today"></div>
       </div>
 
-      <!-- 📋 설명자료 (인포그래픽) — 앱 초기 화면에서 바로 보이도록 히어로 아래에 배치 -->
+      <!-- 📋 설명자료 (인포그래픽 & HITL 프레임워크) — 앱 초기 화면에서 바로 보이도록 히어로 아래에 배치 -->
       <div class="info-section">
-        <h2 class="info-section__title">
-          <svg class="ic" style="width:22px;height:22px;vertical-align:-4px;margin-right:6px"><use href="#i-records" /></svg>
-          설명자료
-        </h2>
-        <p class="info-section__desc">카드 한 장으로 완성되는 스마트 학급 하루를 한눈에 살펴보세요!</p>
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+          <div>
+            <h2 class="info-section__title">
+              <svg class="ic" style="width:22px;height:22px;vertical-align:-4px;margin-right:6px"><use href="#i-records" /></svg>
+              스마트 학급 &amp; HITL AI 인포그래픽
+            </h2>
+            <p class="info-section__desc">카드 한 장으로 완성되는 하루와 인간 협업형(HITL) 교육공학 프레임워크를 살펴보세요!</p>
+          </div>
+          <div class="hitl-subtabs" style="margin-bottom:0">
+            <button class="hitl-subtab active" id="btn-info-live">📸 실물 디바이스형</button>
+            <button class="hitl-subtab" id="btn-info-illust">🎨 일러스트 안내형</button>
+          </div>
+        </div>
+
         <div class="info-section__img-wrap" id="infographic-wrap">
           <img
             src="infographic.jpg"
-            alt="카드 한 장으로 완성되는 스마트 학급 하루 — 8가지 기능 인포그래픽"
+            alt="스마트 학급 & 지능형 과학실 인포그래픽"
             class="info-section__img"
             id="infographic-img"
             loading="lazy"
           />
           <div class="info-section__zoom-hint">🔍 이미지를 클릭하면 크게 볼 수 있어요</div>
+        </div>
+      </div>
+
+      <!-- 🧠 [신규] 인간 협업형(HITL) 교육 설계 & AI-SPARC 프레임워크 인포그래픽 대시보드 -->
+      <div class="hitl-infographic-card">
+        <div class="hitl-info-header">
+          <div class="hitl-hero__badge">PEDAGOGY-FIRST FRAMEWORK</div>
+          <h2 style="margin:4px 0 6px; font-size:20px; font-weight:800; color:var(--text)">
+            🤖 인간 협업형(HITL) AI 교육 &amp; 메타인지 감사 추적 설계안
+          </h2>
+          <p style="margin:0; font-size:13.5px; color:var(--text-mute)">
+            단순 정답 기계(인지적 오프로딩)를 넘어, 교사와 학생이 주체(Agency)로 서는 4대 핵심 원칙
+          </p>
+        </div>
+
+        <div class="hitl-info-grid">
+          <!-- 카드 1: DDA 루프 & Level 3 HITL -->
+          <div class="hitl-grid-card">
+            <div class="hitl-card-tag">교실 DDA 루프</div>
+            <div class="hitl-card-title">🔄 Level 3 중간 자동화</div>
+            <p class="hitl-card-desc">
+              <b>탐지(Detect) → 진단(Diagnose) → 조치(Act)</b> 순환 고리에서 AI 초안을 <b>교사가 비판적으로 검토·수정 및 최종 승인</b> 후 배포
+            </p>
+            <button class="hitl-link-btn" data-goto="hitl" data-subtab="hitl-review">🛡️ 교사 승인 센터 이동 →</button>
+          </div>
+
+          <!-- 카드 2: 교사용 AI-SPARC -->
+          <div class="hitl-grid-card">
+            <div class="hitl-card-tag">수업 기획 모델</div>
+            <div class="hitl-card-title">🎓 AI-SPARC 5단계 주기</div>
+            <p class="hitl-card-desc">
+              <b>S(자가성찰) → P(TRACI 프롬프트) → A(2022 성취기준) → R(교육학 이론 룰) → C(교사 비판 검토)</b>로 실용적인 지도안 완성
+            </p>
+            <button class="hitl-link-btn" data-goto="hitl" data-subtab="hitl-sparc">✨ AI-SPARC 설계기 이동 →</button>
+          </div>
+
+          <!-- 카드 3: 학생용 AI 감사 추적 -->
+          <div class="hitl-grid-card">
+            <div class="hitl-card-tag">오프로딩 방지</div>
+            <div class="hitl-card-title">📝 4단계 AI 감사 추적</div>
+            <p class="hitl-card-desc">
+              <b>①인간 독자 탐구 → ②TRACI 질문 → ③피드백 태깅 → ④비판적 교정</b>을 포트폴리오로 기록하여 진짜 지식을 안착
+            </p>
+            <button class="hitl-link-btn" data-goto="hitl" data-subtab="hitl-audit">📄 활동지 제작기 이동 →</button>
+          </div>
+
+          <!-- 카드 4: 피드백 태깅 메타인지 -->
+          <div class="hitl-grid-card">
+            <div class="hitl-card-tag">비판적 평가</div>
+            <div class="hitl-card-title">🏷️ 3대 메타 피드백 태깅</div>
+            <p class="hitl-card-desc">
+              AI의 답변을 수동 수용하지 않고 <b>정확성(Correctness)·명확성(Clarity)·적절성(Tone)</b>을 학생이 직접 평정 및 오류 수정
+            </p>
+            <button class="hitl-link-btn" data-goto="hitl" data-subtab="hitl-tagging">🏷️ 피드백 태깅 분석 이동 →</button>
+          </div>
         </div>
       </div>
 

@@ -84,24 +84,50 @@ function setMode(mode) {
   }).catch(() => {});
 }
 
-// ---- 인포그래픽 라이트박스 (이미지 확대 보기) ----
-// 인포그래픽 이미지를 클릭하면 전체 화면으로 크게 보여주는 기능
+// ---- 인포그래픽 라이트박스 & 실물/일러스트 전환 ----
 (() => {
-  const wrap = document.getElementById('infographic-wrap');   // 이미지 감싸는 영역
-  const lb   = document.getElementById('infographic-lightbox'); // 어두운 배경 + 확대 이미지
-  const closeBtn = document.getElementById('lightbox-close');   // 닫기(×) 버튼
-  if (!wrap || !lb) return; // 요소가 없으면 아무것도 하지 않음
+  const wrap = document.getElementById('infographic-wrap');
+  const lb   = document.getElementById('infographic-lightbox');
+  const closeBtn = document.getElementById('lightbox-close');
+  const imgEl = document.getElementById('infographic-img');
+  const lbImg = lb?.querySelector('.lightbox__img');
+  const btnLive = document.getElementById('btn-info-live');
+  const btnIllust = document.getElementById('btn-info-illust');
 
-  // 이미지(또는 감싸개) 클릭 → 라이트박스 열기
+  // 실물 / 일러스트 이미지 전환
+  btnLive?.addEventListener('click', () => {
+    btnLive.classList.add('active');
+    btnIllust?.classList.remove('active');
+    if (imgEl) imgEl.src = 'infographic_device.jpg';
+    if (lbImg) lbImg.src = 'infographic_device.jpg';
+  });
+
+  btnIllust?.addEventListener('click', () => {
+    btnIllust.classList.add('active');
+    btnLive?.classList.remove('active');
+    if (imgEl) imgEl.src = 'infographic_illust.jpg';
+    if (lbImg) lbImg.src = 'infographic_illust.jpg';
+  });
+
+  // HITL 인포그래픽 카드 바로가기 버튼
+  document.querySelectorAll('.hitl-link-btn[data-goto]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const targetTab = btn.dataset.goto;
+      const subtab = btn.dataset.subtab;
+      document.querySelector(`.tab[data-tab="${targetTab}"]`)?.click();
+      if (subtab) {
+        setTimeout(() => {
+          document.querySelector(`.hitl-subtab[data-hitl-tab="${subtab}"]`)?.click();
+        }, 60);
+      }
+    });
+  });
+
+  if (!wrap || !lb) return;
+
   wrap.addEventListener('click', () => { lb.hidden = false; });
-
-  // 닫기 버튼 클릭 → 라이트박스 닫기
-  closeBtn.addEventListener('click', (e) => { e.stopPropagation(); lb.hidden = true; });
-
-  // 어두운 배경(이미지 바깥) 클릭 → 라이트박스 닫기
+  closeBtn?.addEventListener('click', (e) => { e.stopPropagation(); lb.hidden = true; });
   lb.addEventListener('click', (e) => { if (e.target === lb) lb.hidden = true; });
-
-  // ESC 키 → 라이트박스 닫기
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !lb.hidden) lb.hidden = true; });
 })();
 
