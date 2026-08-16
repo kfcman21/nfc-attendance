@@ -6,12 +6,15 @@
 
 > 본 문서는 `INFOGRAPHIC_PROMPT_GUIDE.md`(v2.1)와 `infographic-text.md`를 통합·갱신한 최신본입니다.
 > v2.1 대비 **9번째 핵심 기능 「인간 협업형(HITL) AI 교육 스튜디오」** 영역이 신규 반영되었습니다.
-> 산출물은 `public/infographic_device.jpg`(3D 실물형), `public/infographic_illust.jpg`(2D 일러스트형)로 교체 배포합니다.
+> 산출물은 **`public/infographic.jpg` 단일 파일**로 교체 배포합니다.
 
 ### ✅ 채택본 (v1.13.5 배포 반영)
 
-**클레이(claymation) 3D 스타일 가로형 8카드 인포그래픽**이 최종 채택되어 `public/infographic.jpg`,
-`public/infographic_device.jpg`, `public/infographic_illust.jpg` 세 파일 모두에 동일하게 반영되었습니다.
+**클레이(claymation) 3D 스타일 가로형 8카드 인포그래픽**이 최종 채택되었습니다.
+v1.13.5부터 이미지 파일은 `public/infographic.jpg` **하나로 일원화**되었습니다.
+(기존 `infographic_device.jpg` · `infographic_illust.jpg`는 동일 파일 중복이라 제거되었습니다.)
+본문 표시·라이트박스 확대·PWA 서비스워커 캐시가 모두 이 한 파일을 참조합니다.
+교체 시 `public/infographic.jpg` 하나만 덮어쓰고, `public/sw.js`의 `CACHE` 버전을 올려 주세요.
 
 - **타이틀**: "NFC 에듀태그, 카드 한 장으로 여는 스마트 학급과 지능형 과학실"
 - **레이아웃**: 가로형 4열 × 2행 = 8카드 (아래 §3의 3:4 세로 구조도는 인쇄 포스터용 대안안으로 유지)

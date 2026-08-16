@@ -84,7 +84,7 @@ function setMode(mode) {
   }).catch(() => {});
 }
 
-// ---- 인포그래픽 라이트박스 & 실물/일러스트 전환 ----
+// ---- 인포그래픽 라이트박스 ----
 (() => {
   const wrap = document.getElementById('infographic-wrap');
   const lb   = document.getElementById('infographic-lightbox');
@@ -92,7 +92,7 @@ function setMode(mode) {
   const imgEl = document.getElementById('infographic-img');
   const lbImg = lb?.querySelector('.lightbox__img');
 
-  if (lbImg) lbImg.src = 'infographic_device.jpg';
+  if (lbImg) lbImg.src = 'infographic.jpg';
 
   // HITL 인포그래픽 카드 바로가기 버튼
   document.querySelectorAll('.hitl-link-btn[data-goto]').forEach((btn) => {
