@@ -1,6 +1,6 @@
 {
   "name": "nfc-edutag",
-  "version": "1.13.4",
+  "version": "1.13.5",
   "description": "NFC 에듀태그 - 스마트 학급 & 과학실 올인원 솔루션",
   "type": "module",
   "main": "electron-main.mjs",
