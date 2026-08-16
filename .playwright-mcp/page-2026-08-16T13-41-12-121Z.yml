@@ -1,0 +1,73 @@
+- generic [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]: NFC 에듀태그스마트 학급 & 지능형 과학실
+    - generic [ref=e12]:
+      - generic [ref=e13]: 서버 연결 끊김
+      - button "🌙" [ref=e16] [cursor=pointer]
+  - navigation [ref=e17]:
+    - button "홈" [ref=e18] [cursor=pointer]
+    - button "실시간 출석" [ref=e21] [cursor=pointer]
+    - button "대시보드" [ref=e24] [cursor=pointer]
+    - button "주간 점수" [ref=e27] [cursor=pointer]
+    - button "감정 출석부" [ref=e30] [cursor=pointer]
+    - button "지구 포인트" [ref=e33] [cursor=pointer]
+    - button "도서 대여" [ref=e36] [cursor=pointer]
+    - button "셔틀런" [ref=e39] [cursor=pointer]
+    - button "서킷" [ref=e42] [cursor=pointer]
+    - button "지능형 과학실" [ref=e45] [cursor=pointer]
+    - button "HITL AI 코치" [active] [ref=e48] [cursor=pointer]
+    - button "학생 관리" [ref=e51] [cursor=pointer]
+    - button "출석 현황" [ref=e54] [cursor=pointer]
+    - button "카드 초기화" [ref=e57] [cursor=pointer]
+    - button "데이터 관리" [ref=e60] [cursor=pointer]
+    - button "설정·진단" [ref=e63] [cursor=pointer]
+  - generic [ref=e216]:
+    - generic [ref=e217]:
+      - generic [ref=e218]: PEDAGOGY-FIRST & HUMAN-IN-THE-LOOP
+      - heading "인간 협업형(HITL) AI 교육 스튜디오" [level=1] [ref=e219]
+      - paragraph [ref=e220]: 기계의 인지적 오프로딩을 예방하고, 교사의 교수학습 통제권(Agency)과 하이터치(High Touch)를 보전하는 4단계 교육공학 도구입니다.
+    - generic [ref=e221]:
+      - button "🎓 AI-SPARC 수업 설계기" [ref=e222] [cursor=pointer]
+      - button "🛡️ 피드백 검토 & 교사 승인 (Level 3)" [ref=e223] [cursor=pointer]
+      - button "📝 AI 감사 추적 활동지 제작" [ref=e224] [cursor=pointer]
+      - button "🏷️ 피드백 태깅 & 감사 분석" [ref=e225] [cursor=pointer]
+    - generic [ref=e227]:
+      - heading "🎓 AI-SPARC 기반 2022 개정 성취기준 연계 수업안 설계" [level=2] [ref=e228]
+      - paragraph [ref=e229]: AI-SPARC 5단계 성찰 주기(자가 성찰 → TRACI 프롬프팅 → 성취기준 바인딩 → 교육학 이론 제약 → 최종 비판 검토)에 맞춰 수업 지도안과 비판적 발문을 생성합니다.
+      - generic [ref=e230]:
+        - generic [ref=e231]:
+          - text: 대상 학년
+          - combobox "대상 학년" [ref=e232]:
+            - option "초등 3~4학년 (Controlled Scaffolding)"
+            - option "초등 5~6학년 (Controlled Scaffolding)" [selected]
+            - option "중학교 1~3학년 (Scaffolded Tutoring)"
+        - generic [ref=e233]:
+          - text: 교과 영역
+          - combobox "교과 영역" [ref=e234]:
+            - option "실과·정보 (소프트웨어/데이터/AI)" [selected]
+            - option "도덕·창체 (SEL 감정/공감/디지털 윤리)"
+            - option "과학·지능형과학실 (환경 데이터/생물)"
+            - option "국어·미디어 (비판적 읽기/팩트체크)"
+            - option "체육·보건 (건강 데이터/PAPS)"
+        - generic [ref=e235]:
+          - text: 수업 주제
+          - textbox "수업 주제" [ref=e236]:
+            - /placeholder: "예: 식물의 광합성과 환경 센서 탐구"
+            - text: 교통카드 속 NFC 원리와 비판적 출석 데이터 분석
+        - generic [ref=e237]:
+          - text: 2022 개정 교육과정 성취기준 바인딩 (Academic Requirements)
+          - textbox "2022 개정 교육과정 성취기준 바인딩 (Academic Requirements)" [ref=e238]: "[6실04-09] 실생활 속에서 인공지능과 소프트웨어의 역할을 이해하고, 윤리적·안전하게 활용하는 태도를 기른다."
+        - generic [ref=e239]:
+          - text: 교육학 이론 룰 (Research on Pedagogy)
+          - combobox "교육학 이론 룰 (Research on Pedagogy)" [ref=e240]:
+            - option "비고츠키의 사회적 구성주의 & 비계 설정" [selected]
+            - option "피아제의 인지적 불평형 유도 (오개념 반박)"
+            - option "메타인지 촉진 & 바람직한 어려움 부여"
+        - generic [ref=e241]:
+          - text: 수업 설계 의도 (Intent)
+          - textbox "수업 설계 의도 (Intent)" [ref=e242]: 단순 답 찾기가 아닌 데이터 수집 과정의 원리와 개인정보 보호 가치를 스스로 깨닫도록 유도
+      - button "✨ AI-SPARC 수업 지도안 생성하기" [ref=e244] [cursor=pointer]
+  - contentinfo [ref=e213]:
+    - 'button "테스트: 가짜 카드 태그" [ref=e214] [cursor=pointer]'
+    - generic [ref=e215]: 리더기 없이 동작을 확인할 때 사용
+  - text: … …
