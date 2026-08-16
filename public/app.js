@@ -91,23 +91,8 @@ function setMode(mode) {
   const closeBtn = document.getElementById('lightbox-close');
   const imgEl = document.getElementById('infographic-img');
   const lbImg = lb?.querySelector('.lightbox__img');
-  const btnLive = document.getElementById('btn-info-live');
-  const btnIllust = document.getElementById('btn-info-illust');
 
-  // 실물 / 일러스트 이미지 전환
-  btnLive?.addEventListener('click', () => {
-    btnLive.classList.add('active');
-    btnIllust?.classList.remove('active');
-    if (imgEl) imgEl.src = 'infographic_device.jpg';
-    if (lbImg) lbImg.src = 'infographic_device.jpg';
-  });
-
-  btnIllust?.addEventListener('click', () => {
-    btnIllust.classList.add('active');
-    btnLive?.classList.remove('active');
-    if (imgEl) imgEl.src = 'infographic_illust.jpg';
-    if (lbImg) lbImg.src = 'infographic_illust.jpg';
-  });
+  if (lbImg) lbImg.src = 'infographic_device.jpg';
 
   // HITL 인포그래픽 카드 바로가기 버튼
   document.querySelectorAll('.hitl-link-btn[data-goto]').forEach((btn) => {
