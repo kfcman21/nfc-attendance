@@ -1,4 +1,4 @@
-# 🤖 CLAUDE.md — NFC 에듀태그 (NFC EduTag) 프로젝트 가이드
+# 🤖 GEMINI.md — NFC 에듀태그 (NFC EduTag) 프로젝트 가이드
 
 본 문서는 **Claude Code CLI** 및 AI 페어 프로그래밍 어시스턴트가 프로젝트의 아키텍처, 교육학적 설계 원칙(HITL & AI-SPARC), 빌드/배포 워크플로, 코딩 컨벤션을 이해하고 안전하게 작업할 수 있도록 작성된 종합 지침서입니다.
 

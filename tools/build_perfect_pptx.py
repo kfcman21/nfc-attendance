@@ -235,8 +235,9 @@ def create_perfect_hackathon_pptx():
         "✔  스마트 PAPS 셔틀런 & 서킷 : 반환점 태깅으로 왕복달리기 자동 기록 및 Solar AI 체력 코칭 리포트",
         "✔  손바닥 도서관 & 지구 포인트 상점 : 학급문고 원터치 대여 및 1인 1역할 보상 학급 화폐 경제 실습",
         "✔  인간 협업형(HITL) AI 교육 스튜디오 : AI-SPARC 수업 설계기 + 교사 Level 3 검토·승인 센터 + AI 감사 추적 활동지 제작기",
+        "✔  🖥️ 바탕화면 달력 연동 : 설정 탭에서 데스크톱 달력 앱 설치 파일(exe) 원클릭 연동 실행",
         "✔  공공데이터 & 100% 로컬 보안 : 기상청·에어코리아·NEIS 실시간 연동 및 완전 오프라인 SQLite 암호화 보관"
-    ], font_size=Pt(8.8), line_space=Pt(3))
+    ], font_size=Pt(8.2), line_space=Pt(2))
 
     # 5. 입력 자료
     draw_section_header(s2, Inches(6.52), "5. 입력 자료", "넣을 자료 · 데이터 · 예시 문서")
@@ -303,13 +304,15 @@ def create_perfect_hackathon_pptx():
         "  - 온도, 조도, 소음, 가속도",
         "",
         "• 햄스터 로봇 미션",
-        "  - 온실 순찰 / 자율주행"
+        "  - 온실 순찰 / 자율주행",
+        "",
+        "• 바탕화면 달력 실행 클릭"
     ]
     for it in items1:
         p = tf1.add_paragraph()
         p.text = it
         p.font.name = "Malgun Gothic"
-        p.font.size = Pt(8.8)
+        p.font.size = Pt(8.2)
         p.font.color.rgb = C_TEXT
 
     # 화살표 1
@@ -352,13 +355,15 @@ def create_perfect_hackathon_pptx():
         "• HITL Level 3 교사 검토",
         "  - AI 초안 비판·수정·승인",
         "",
-        "• 실시간 SSE 브로드캐스트"
+        "• 실시간 SSE 브로드캐스트",
+        "",
+        "• 달력 exe spawn 프로세스 구동"
     ]
     for it in items2:
         p = tf2.add_paragraph()
         p.text = it
         p.font.name = "Malgun Gothic"
-        p.font.size = Pt(8.8)
+        p.font.size = Pt(8.2)
         p.font.color.rgb = C_TEXT
 
     # 화살표 2
@@ -401,13 +406,15 @@ def create_perfect_hackathon_pptx():
         "",
         "• 원클릭 엑셀(CSV) 저장",
         "  - 나이스/생활기록부 반영",
-        "  - 100% 로컬 데이터 보존"
+        "  - 100% 로컬 데이터 보존",
+        "",
+        "• 바탕화면 달력 연동화면 표출"
     ]
     for it in items3:
         p = tf3.add_paragraph()
         p.text = it
         p.font.name = "Malgun Gothic"
-        p.font.size = Pt(8.8)
+        p.font.size = Pt(8.2)
         p.font.color.rgb = C_TEXT
 
     # 9. 멘토 질문
@@ -517,14 +524,15 @@ def create_perfect_hackathon_pptx():
 
     # 13. 완성 기준
     draw_section_header(s4, Inches(7.45), "13. 완성 기준", "이것이 되면 완성")
-    draw_content_box(s4, Inches(7.83), Inches(3.10), [
+    draw_content_box(s4, Inches(7.83), Inches(3.25), [
         "1. [필수] 완전 독립형 배포: 인터넷이나 추가 설치 없이 학교 PC에서 NFC에듀태그.exe 더블클릭만으로 100% 정상 구동.",
         "2. [필수] NFC 올인원 다중 모드: 학생 카드 태그 시 출석·감정 체크, 과학실 패스포트 스탬프 발급, 교구 대여/반납이 1초 내에 오류 없이 처리.",
         "3. [필수] 지능형 과학실 융합: kfcman.link/scibit micro:bit 센서 수집 및 kfcman.link/scibot 햄스터 로봇 탐사 미션이 패스포트에 정상 연동.",
         "4. [필수] 초거대 AI 및 로컬 보안: Upstage Solar AI 피드백이 실시간 생성되고, API 키와 학생 정보가 AES-256 로컬 암호화로 안전하게 보관.",
         "5. [필수] 교사용 데이터 관리: 모든 활동 기록이 클릭 한 번으로 엑셀(CSV)로 즉시 다운로드되고 전체 백업/복원이 완벽 지원.",
-        "6. [필수] 인간 협업형(HITL) 검증: AI 피드백이 교사의 Level 3 검토·승인을 거친 뒤에만 학생에게 배포되며, AI-SPARC 수업 설계안과 4단계 AI 감사 추적 활동지가 정상 생성."
-    ], font_size=Pt(8.8), line_space=Pt(2))
+        "6. [필수] 인간 협업형(HITL) 검증: AI 피드백이 교사의 Level 3 검토·승인을 거친 뒤에만 학생에게 배포되며, AI-SPARC 수업 설계안과 4단계 AI 감사 추적 활동지가 정상 생성.",
+        "7. [선택] 바탕화면 달력 연동: 데스크톱 달력 설치 파일(exe) 경로 설정 시 원클릭 프로세스 실행 기능 정상 작동."
+    ], font_size=Pt(8.2), line_space=Pt(1.5))
 
     out_path1 = r"C:\Users\박찬규\Desktop\(완성본)해커톤_팀_활동_기획서_NFC에듀태그.pptx"
     out_path2 = r"C:\Users\박찬규\Desktop\Project\nfc\docs\(완성본)해커톤_팀_활동_기획서_NFC에듀태그.pptx"
@@ -534,6 +542,33 @@ def create_perfect_hackathon_pptx():
     prs.save(out_path2)
     prs.save(out_path3)
     print("성공: 글자 맞춤 최적화 폼이 반영된 해커톤 기획서 PPTX가 생성되었습니다!")
+
+    # comtypes를 사용한 PPTX -> PDF 자동 변환
+    try:
+        import comtypes.client
+        import os
+        print("PDF 자동 변환을 시작합니다...")
+        
+        # PPTX 파일 존재 확인 후 변환 진행
+        powerpoint = comtypes.client.CreateObject("PowerPoint.Application")
+        powerpoint.Visible = True  # COM 오토메이션 안정성을 위해 창 활성화
+        
+        for pptx_path in [out_path1, out_path2, out_path3]:
+            if os.path.exists(pptx_path):
+                pdf_path = pptx_path.replace(".pptx", ".pdf")
+                abs_pptx = os.path.abspath(pptx_path)
+                abs_pdf = os.path.abspath(pdf_path)
+                
+                print(f"변환 진행 중: {abs_pptx} -> {abs_pdf}")
+                deck = powerpoint.Presentations.Open(abs_pptx, WithWindow=False)
+                deck.SaveAs(abs_pdf, 32)  # ppSaveAsPDF = 32
+                deck.Close()
+                print(f"변환 성공: {pdf_path}")
+                
+        powerpoint.Quit()
+        print("성공: 모든 PPTX 파일이 PDF로 성공적으로 자동 변환되었습니다!")
+    except Exception as e:
+        print(f"경고: PDF 자동 변환 중 에러 발생 (수동 변환 필요할 수 있음): {e}")
 
 if __name__ == "__main__":
     create_perfect_hackathon_pptx()

@@ -1,6 +1,7 @@
 // CR-100 출석 프로그램 - 로컬 웹서버
 import express from 'express';
 import { readFileSync, writeFileSync, existsSync, unlinkSync } from 'node:fs';
+import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { networkInterfaces } from 'node:os';
@@ -1689,6 +1690,32 @@ app.post('/api/ui-config', (req, res) => {
     console.error('UI 설정 저장 실패:', e.message);
   }
   res.json({ ok: true, devtools: config.ui.devtools });
+});
+
+// ===== 🖥 바탕화면 달력 (외부 설치 프로그램 실행) =====
+// 별도 배포되는 데스크톱 달력 앱의 설치 파일 경로를 실행한다.
+// 경로가 없거나 존재하지 않으면 안내 메시지를 반환한다.
+config.tools = {
+  desktopCalendarPath:
+    'C:\\Users\\박찬규\\Desktop\\Project\\calendar\\dist\\DesktopCalendar Setup 2.0.3.exe',
+  ...(config.tools || {}),
+};
+app.get('/api/tools/desktop-calendar', (req, res) => {
+  const p = config.tools.desktopCalendarPath;
+  res.json({ path: p, exists: !!p && existsSync(p) });
+});
+app.post('/api/tools/desktop-calendar/launch', (req, res) => {
+  const p = config.tools.desktopCalendarPath;
+  if (!p || !existsSync(p)) {
+    return res.status(404).json({ ok: false, error: '설치 파일을 찾을 수 없습니다. 경로를 확인해 주세요.' });
+  }
+  try {
+    const child = spawn(p, [], { detached: true, stdio: 'ignore' });
+    child.unref();
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 // ===== 🤖 업스테이지(Upstage) Solar AI 피드백 =====

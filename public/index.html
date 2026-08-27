@@ -105,7 +105,7 @@
 
         <div class="info-section__img-wrap" id="infographic-wrap">
           <img
-            src="infographic.jpg"
+            src="infographic.jpg?v=1.13.5"
             alt="NFC 에듀태그 8대 핵심 기능(스마트 출결·감정 케어·과학실 탐구·안전 관리·체력/독서/자치·교사 검토 승인·감사 추적 학습·안심 보안) 인포그래픽"
             class="info-section__img"
             id="infographic-img"
@@ -173,7 +173,7 @@
       <!-- 🔍 인포그래픽 확대 보기 (라이트박스) -->
       <div class="lightbox" id="infographic-lightbox" hidden>
         <button class="lightbox__close" id="lightbox-close" aria-label="닫기">&times;</button>
-        <img src="infographic.jpg" alt="인포그래픽 확대 보기" class="lightbox__img" />
+        <img src="infographic.jpg?v=1.13.5" alt="인포그래픽 확대 보기" class="lightbox__img" />
       </div>
 
       <div class="home-group">
@@ -1313,6 +1313,18 @@
           연결됐다고 표시되는데도 카드를 태그할 때 아무것도 안 나오면, 위에서 다른 포트를 선택해 보세요.
         </p>
         <div id="raw-log" class="rawlog"><div class="rawlog__empty">카드를 태그하면 여기에 표시됩니다…</div></div>
+      </div>
+
+      <div class="card">
+        <h2>🖥 바탕화면 달력</h2>
+        <p class="hint">
+          학급 일정을 항상 바탕화면에서 확인할 수 있는 별도 데스크톱 달력 프로그램입니다.
+          아래 버튼을 누르면 설치 파일을 실행합니다 (최초 1회 설치 필요).
+        </p>
+        <div class="toolbar">
+          <button id="desktop-calendar-install" class="primary">🗓️ 바탕화면 달력 설치 실행</button>
+        </div>
+        <div id="desktop-calendar-msg" class="msg"></div>
       </div>
 
       <div class="card">

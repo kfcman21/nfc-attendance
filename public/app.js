@@ -92,7 +92,7 @@ function setMode(mode) {
   const imgEl = document.getElementById('infographic-img');
   const lbImg = lb?.querySelector('.lightbox__img');
 
-  if (lbImg) lbImg.src = 'infographic.jpg';
+  if (lbImg) lbImg.src = 'infographic.jpg?v=1.13.5';
 
   // HITL 인포그래픽 카드 바로가기 버튼
   document.querySelectorAll('.hitl-link-btn[data-goto]').forEach((btn) => {
@@ -2036,6 +2036,30 @@ $('#neis-save').addEventListener('click', async () => {
   loadNeisMeal();
   neisSchedCache = null;
   loadNeisSchedule();
+});
+
+// ---- 🖥 바탕화면 달력 (외부 설치 프로그램 실행) ----
+$('#desktop-calendar-install')?.addEventListener('click', async () => {
+  const el = $('#desktop-calendar-msg');
+  if (el) {
+    el.className = 'msg';
+    el.textContent = '설치 파일을 실행하는 중...';
+  }
+  try {
+    const res = await fetch('/api/tools/desktop-calendar/launch', { method: 'POST' });
+    const data = await res.json();
+    if (el) {
+      el.className = res.ok && data.ok ? 'msg ok' : 'msg err';
+      el.textContent = res.ok && data.ok
+        ? '설치 프로그램을 실행했습니다. 화면에 뜬 설치 마법사를 따라 진행해 주세요.'
+        : data.error || '실행에 실패했습니다.';
+    }
+  } catch {
+    if (el) {
+      el.className = 'msg err';
+      el.textContent = '실행에 실패했습니다. 네트워크 상태를 확인해 주세요.';
+    }
+  }
 });
 
 // ---- 🛠 화면·디버그 (개발자도구 자동 표시) ----
