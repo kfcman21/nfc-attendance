@@ -750,6 +750,61 @@ if (process.env.NFC_DISABLE_SERIAL === '1')
   console.log('[리더기] NFC_DISABLE_SERIAL=1 — 시리얼 스캔 비활성화 (HID/원격 입력만 사용)');
 else reader.start();
 
+// ---- API: 수동 로그인 및 비밀번호 처리 ----
+app.get('/api/grades', (req, res) => {
+  try {
+    res.json(db.listGrades());
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/students/grade/:grade', (req, res) => {
+  try {
+    res.json(db.listStudentsByGrade(req.params.grade));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/students/:id/password', (req, res) => {
+  const id = Number(req.params.id);
+  const { password } = req.body;
+  if (!password) return res.status(400).json({ error: '비밀번호가 필요합니다.' });
+  try {
+    const student = db.getStudentById(id);
+    if (!student) return res.status(404).json({ error: '학생을 찾을 수 없습니다.' });
+    const updated = db.setStudentPassword(id, password);
+    res.json(updated);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/students/:id/manual-login', (req, res) => {
+  const id = Number(req.params.id);
+  const { password } = req.body;
+  if (!password) return res.status(400).json({ error: '비밀번호가 필요합니다.' });
+  try {
+    const student = db.getStudentById(id);
+    if (!student) return res.status(404).json({ error: '학생을 찾을 수 없습니다.' });
+    
+    const ok = db.verifyStudentPassword(id, password);
+    if (!ok) return res.status(401).json({ error: '비밀번호가 일치하지 않습니다.' });
+
+    if (student.card_uid) {
+      lastSeen.delete(student.card_uid);
+      process.nextTick(() => {
+        reader.emit('card', student.card_uid);
+      });
+    }
+
+    res.json({ success: true, student: { id: student.id, name: student.name, student_no: student.student_no, grade: student.grade } });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ---- API: 학생 ----
 app.get('/api/students', (req, res) => res.json(db.listStudents()));
 

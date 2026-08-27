@@ -1763,3 +1763,103 @@ body.dark .tool-badge--borrowed { background: #4a3c18; color: #fab1a0; }
   border-color: var(--primary);
 }
 
+/* ===== 수동 로그인 & 가상 키보드 & 아이콘 패스워드 스타일 ===== */
+.ml-step {
+  animation: panelIn 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.grid-buttons {
+  margin-top: 10px;
+}
+.grid-buttons button {
+  background: var(--panel2);
+  border: 1px solid var(--hairline);
+  color: var(--text);
+  padding: 12px 8px;
+  font-size: 15px;
+  font-weight: 700;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+  display: block;
+  width: 100%;
+}
+.grid-buttons button:hover {
+  background: var(--primary-light);
+  border-color: var(--primary);
+  color: var(--primary);
+  transform: translateY(-1px);
+}
+.grid-buttons button:active {
+  transform: scale(0.97);
+}
+
+/* 가상 키보드 */
+.virtual-keyboard {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 6px;
+  background: var(--panel2);
+  border: 1px solid var(--hairline);
+  padding: 10px;
+  border-radius: 8px;
+  max-width: 100%;
+}
+.virtual-keyboard button {
+  padding: 10px 4px;
+  font-size: 14px;
+  font-weight: bold;
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  color: var(--text);
+  border-radius: 6px;
+  cursor: pointer;
+  user-select: none;
+  box-shadow: var(--shadow-sm);
+}
+.virtual-keyboard button:hover {
+  background: var(--primary-light);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.virtual-keyboard button.action-key {
+  grid-column: span 2;
+  background: var(--primary-light);
+  color: var(--primary);
+  border-color: var(--primary-border);
+}
+.virtual-keyboard button.action-key:hover {
+  background: var(--primary);
+  color: #fff;
+}
+
+/* 비밀번호 도트 표시기 */
+.pw-dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--stone);
+  background: transparent;
+  transition: all 0.2s ease;
+}
+.pw-dot.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  transform: scale(1.15);
+  box-shadow: 0 0 8px var(--primary-border);
+}
+
+/* 아이콘 비밀번호 패드 */
+.btn-pw-icon {
+  transition: all 0.2s ease;
+}
+.btn-pw-icon:hover {
+  background: var(--primary-light) !important;
+  border-color: var(--primary) !important;
+  transform: scale(1.08);
+}
+.btn-pw-icon:active {
+  transform: scale(0.92);
+}
+

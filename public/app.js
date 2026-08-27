@@ -3044,3 +3044,347 @@ function initHitlTab() {
     }
   });
 }
+
+// ===== 🔑 수동 로그인 및 아이콘 비밀번호 처리 모듈 (NFC 카드 없음) =====
+function initManualLogin() {
+  const triggerBtn = $('#btn-manual-login-trigger');
+  const overlay = $('#manual-login-overlay');
+  const closeBtn = $('#ml-overlay-close');
+  
+  const stepGrade = $('#ml-step-grade');
+  const stepStudent = $('#ml-step-student');
+  const stepPassword = $('#ml-step-password');
+  
+  const gradeListDiv = $('#ml-grade-list');
+  const studentListDiv = $('#ml-student-list');
+  const searchNameInput = $('#ml-search-name');
+  const virtualKbDiv = $('#ml-virtual-keyboard');
+  const btnKbToggle = $('#ml-btn-keyboard');
+  
+  const selectedGradeBadge = $('#ml-selected-grade');
+  const selectedStudentNameEl = $('#ml-selected-student-name');
+  const pwGuideEl = $('#ml-pw-guide');
+  const pwMsgEl = $('#ml-pw-msg');
+  const btnClearPw = $('#ml-btn-clear-pw');
+  
+  let allGrades = [];
+  let studentsInGrade = [];
+  let selectedGrade = null;
+  let selectedStudent = null;
+  
+  // 비밀번호 입력 상태
+  let inputPwSequence = [];
+  let settingNewPw = false;
+  let firstInputPw = null;
+
+  if (!triggerBtn || !overlay) return;
+
+  // 1. 이벤트 리스너 등록
+  triggerBtn.addEventListener('click', openManualLogin);
+  closeBtn.addEventListener('click', closeManualLogin);
+  
+  $('#ml-back-to-grade').addEventListener('click', () => {
+    showStep('grade');
+  });
+  
+  $('#ml-back-to-student').addEventListener('click', () => {
+    showStep('student');
+  });
+  
+  btnKbToggle.addEventListener('click', () => {
+    const isHidden = virtualKbDiv.style.display === 'none';
+    virtualKbDiv.style.display = isHidden ? 'grid' : 'none';
+  });
+
+  searchNameInput.addEventListener('input', () => {
+    renderStudentList();
+  });
+
+  // 지우기 버튼
+  btnClearPw.addEventListener('click', () => {
+    inputPwSequence = [];
+    updatePwDots();
+    pwMsgEl.textContent = '';
+  });
+
+  // 아이콘 비밀번호 입력 터치 처리
+  document.querySelectorAll('.btn-pw-icon').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const icon = btn.dataset.icon;
+      if (inputPwSequence.length < 4) {
+        inputPwSequence.push(icon);
+        updatePwDots();
+        pwMsgEl.textContent = '';
+        
+        // 4글자 다 차면 검증 또는 설정 처리
+        if (inputPwSequence.length === 4) {
+          setTimeout(handlePasswordSubmit, 300);
+        }
+      }
+    });
+  });
+
+  // 2. 가상 키보드 렌더링
+  const JAMO_KEYS = [
+    'ㄱ', 'ㄴ', 'ㄷ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅅ', 'ㅇ', 'ㅈ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ',
+    'ㅏ', 'ㅑ', 'ㅓ', 'ㅕ', 'ㅗ', 'ㅛ', 'ㅜ', 'ㅠ', 'ㅡ', 'ㅣ', 'ㅐ', 'ㅔ'
+  ];
+  
+  virtualKbDiv.innerHTML = '';
+  JAMO_KEYS.forEach(key => {
+    const btn = document.createElement('button');
+    btn.textContent = key;
+    btn.type = 'button';
+    btn.addEventListener('click', () => {
+      searchNameInput.value += key;
+      searchNameInput.dispatchEvent(new Event('input'));
+    });
+    virtualKbDiv.appendChild(btn);
+  });
+  
+  // 백스페이스 키
+  const btnBack = document.createElement('button');
+  btnBack.textContent = '←';
+  btnBack.className = 'action-key';
+  btnBack.addEventListener('click', () => {
+    searchNameInput.value = searchNameInput.value.slice(0, -1);
+    searchNameInput.dispatchEvent(new Event('input'));
+  });
+  virtualKbDiv.appendChild(btnBack);
+
+  // 전체 삭제 키
+  const btnClear = document.createElement('button');
+  btnClear.textContent = '지우기';
+  btnClear.className = 'action-key';
+  btnClear.addEventListener('click', () => {
+    searchNameInput.value = '';
+    searchNameInput.dispatchEvent(new Event('input'));
+  });
+  virtualKbDiv.appendChild(btnClear);
+
+  // 3. 내부 헬퍼 함수들
+  function showStep(stepName) {
+    stepGrade.style.display = stepName === 'grade' ? 'block' : 'none';
+    stepStudent.style.display = stepName === 'student' ? 'block' : 'none';
+    stepPassword.style.display = stepName === 'password' ? 'block' : 'none';
+  }
+
+  async function openManualLogin() {
+    overlay.classList.add('show');
+    showStep('grade');
+    searchNameInput.value = '';
+    virtualKbDiv.style.display = 'none';
+    
+    try {
+      allGrades = await api('/api/grades');
+      renderGradeList();
+    } catch (e) {
+      gradeListDiv.innerHTML = `<div class="msg err">학급 정보를 불러올 수 없습니다.</div>`;
+    }
+  }
+
+  function closeManualLogin() {
+    overlay.classList.remove('show');
+    selectedGrade = null;
+    selectedStudent = null;
+    inputPwSequence = [];
+    firstInputPw = null;
+    settingNewPw = false;
+  }
+
+  function renderGradeList() {
+    gradeListDiv.innerHTML = '';
+    if (allGrades.length === 0) {
+      gradeListDiv.innerHTML = `<div class="msg err" style="grid-column: 1/-1">등록된 학급(학년/반 정보가 있는 학생)이 없습니다. 학생 관리에서 학년/반을 먼저 지정해 주세요.</div>`;
+      return;
+    }
+    
+    allGrades.forEach(grade => {
+      const btn = document.createElement('button');
+      btn.textContent = grade;
+      btn.type = 'button';
+      btn.addEventListener('click', () => selectGrade(grade));
+      gradeListDiv.appendChild(btn);
+    });
+  }
+
+  async function selectGrade(grade) {
+    selectedGrade = grade;
+    selectedGradeBadge.textContent = grade;
+    showStep('student');
+    searchNameInput.value = '';
+    searchNameInput.focus();
+    
+    try {
+      studentsInGrade = await api(`/api/students/grade/${encodeURIComponent(grade)}`);
+      renderStudentList();
+    } catch (e) {
+      studentListDiv.innerHTML = `<div class="msg err">학생 명단을 불러올 수 없습니다.</div>`;
+    }
+  }
+
+  // 한글 초성 분리 헬퍼
+  function getChoseong(str) {
+    const cho = ["ㄱ", "ㄲ", "ㄴ", "ㄷ", "ㄸ", "ㄹ", "ㅁ", "ㅂ", "ㅃ", "ㅅ", "ㅆ", "ㅇ", "ㅈ", "ㅉ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ"];
+    let result = "";
+    for (let i = 0; i < str.length; i++) {
+      const code = str.charCodeAt(i) - 44032;
+      if (code >= 0 && code <= 11172) {
+        result += cho[Math.floor(code / 588)];
+      } else {
+        result += str.charAt(i);
+      }
+    }
+    return result;
+  }
+
+  function renderStudentList() {
+    studentListDiv.innerHTML = '';
+    const query = searchNameInput.value.trim().toLowerCase();
+    
+    const filtered = studentsInGrade.filter(s => {
+      if (!query) return true;
+      const name = (s.name || '').toLowerCase();
+      const studentNo = (s.student_no || '').toLowerCase();
+      // 초성 매칭 지원
+      const choName = getChoseong(name);
+      return name.includes(query) || studentNo.includes(query) || choName.includes(query);
+    });
+
+    if (filtered.length === 0) {
+      studentListDiv.innerHTML = `<div class="msg err" style="grid-column: 1/-1; padding: 12px;">일치하는 학생이 없습니다.</div>`;
+      return;
+    }
+
+    filtered.forEach(s => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      const noStr = s.student_no ? `[${s.student_no}번] ` : '';
+      btn.textContent = `${noStr}${displayName(s)}`;
+      btn.addEventListener('click', () => selectStudent(s));
+      studentListDiv.appendChild(btn);
+    });
+  }
+
+  function selectStudent(student) {
+    selectedStudent = student;
+    selectedStudentNameEl.textContent = `${student.grade} · ${student.student_no ? student.student_no + '번 ' : ''}${displayName(student)}`;
+    inputPwSequence = [];
+    firstInputPw = null;
+    updatePwDots();
+    pwMsgEl.textContent = '';
+    
+    if (!student.has_password) {
+      settingNewPw = true;
+      pwGuideEl.textContent = '⚠️ 초기 비밀번호 설정: 새 비밀번호(아이콘 4개)를 입력하세요.';
+      pwGuideEl.style.color = 'var(--primary)';
+    } else {
+      settingNewPw = false;
+      pwGuideEl.textContent = '아래 아이콘 중 4개를 순서대로 터치하세요.';
+      pwGuideEl.style.color = 'var(--text-mute)';
+    }
+    showStep('password');
+  }
+
+  function updatePwDots() {
+    document.querySelectorAll('.pw-dot').forEach((dot, idx) => {
+      dot.classList.toggle('active', idx < inputPwSequence.length);
+    });
+  }
+
+  async function handlePasswordSubmit() {
+    const passwordStr = inputPwSequence.join('');
+    
+    // 신규 비밀번호 설정 모드
+    if (settingNewPw) {
+      if (!firstInputPw) {
+        // 첫 번째 입력 완료
+        firstInputPw = passwordStr;
+        inputPwSequence = [];
+        updatePwDots();
+        pwGuideEl.textContent = '🔄 비밀번호 확인: 동일하게 한 번 더 입력하세요.';
+        pwGuideEl.style.color = 'var(--success)';
+      } else {
+        // 두 번째 입력 완료 (확인)
+        if (passwordStr !== firstInputPw) {
+          pwMsgEl.className = 'msg err';
+          pwMsgEl.textContent = '❌ 비밀번호가 일치하지 않습니다. 처음부터 다시 설정하세요.';
+          inputPwSequence = [];
+          firstInputPw = null;
+          updatePwDots();
+          pwGuideEl.textContent = '⚠️ 초기 비밀번호 설정: 새 비밀번호(아이콘 4개)를 입력하세요.';
+          pwGuideEl.style.color = 'var(--primary)';
+          return;
+        }
+        
+        // 비밀번호 등록 API 호출
+        try {
+          const res = await fetch(`/api/students/${selectedStudent.id}/password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: passwordStr })
+          });
+          if (!res.ok) throw new Error();
+          
+          pwMsgEl.className = 'msg ok';
+          pwMsgEl.textContent = '✅ 비밀번호 설정 완료! 로그인을 진행합니다.';
+          settingNewPw = false;
+          
+          // 바로 수동 로그인 진행
+          setTimeout(() => executeManualLogin(passwordStr), 800);
+        } catch {
+          pwMsgEl.className = 'msg err';
+          pwMsgEl.textContent = '❌ 비밀번호 설정에 실패했습니다.';
+          inputPwSequence = [];
+          firstInputPw = null;
+          updatePwDots();
+        }
+      }
+    } else {
+      // 일반 로그인 모드
+      executeManualLogin(passwordStr);
+    }
+  }
+
+  async function executeManualLogin(passwordStr) {
+    try {
+      const res = await fetch(`/api/students/${selectedStudent.id}/manual-login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: passwordStr })
+      });
+      const data = await res.json();
+      
+      if (!res.ok) {
+        pwMsgEl.className = 'msg err';
+        pwMsgEl.textContent = data.error || '비밀번호가 일치하지 않습니다.';
+        inputPwSequence = [];
+        updatePwDots();
+        return;
+      }
+      
+      // 로그인 성공
+      pwMsgEl.className = 'msg ok';
+      pwMsgEl.textContent = '🎉 수동 로그인 성공!';
+      
+      setTimeout(() => {
+        closeManualLogin();
+        // 로그인 성공 시 현재 탭 리로드 유도
+        const activeTab = $('.tab.active');
+        if (activeTab) {
+          activeTab.click();
+        }
+      }, 1000);
+    } catch (e) {
+      pwMsgEl.className = 'msg err';
+      pwMsgEl.textContent = '❌ 서버와 통신 중 오류가 발생했습니다.';
+      inputPwSequence = [];
+      updatePwDots();
+    }
+  }
+}
+
+// 초기화 호출 추가
+document.addEventListener('DOMContentLoaded', () => {
+  initManualLogin();
+});

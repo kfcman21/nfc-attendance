@@ -305,6 +305,11 @@
       <div id="bigcard" class="bigcard bigcard--idle">
         <div class="bigcard__hint">카드를 리더기에 대주세요</div>
       </div>
+      <div style="text-align: center; margin: 16px 0;">
+        <button id="btn-manual-login-trigger" class="secondary" style="font-size: 16px; padding: 12px 24px; border-radius: 8px; font-weight: bold; cursor: pointer;">
+          🔑 NFC 미소지 로그인 (수동 로그인)
+        </button>
+      </div>
       <h2>오늘 출석 <span id="today-count" class="count">0</span></h2>
       <ul id="today-list" class="taplist"></ul>
     </section>
@@ -1589,6 +1594,76 @@
           <button id="review-save">기록하기</button>
           <button id="review-skip" class="ghost">건너뛰기</button>
         </div>
+      </div>
+    </div>
+
+    <!-- 수동 로그인 오버레이 (NFC 카드 없음) -->
+    <div id="manual-login-overlay" class="overlay">
+      <div class="overlay__box" style="max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto;">
+        <div class="overlay__title" style="margin-bottom: 8px;">🔑 NFC 미소지 수동 로그인</div>
+        <p class="hint" style="margin-bottom: 16px;">카드를 가져오지 않은 경우 학급과 이름을 선택한 후 로그인합니다.</p>
+        
+        <!-- 1단계: 학급(학년/반) 선택 -->
+        <div id="ml-step-grade" class="ml-step">
+          <h3 style="margin-bottom: 12px;">① 학급(학년/반)을 선택하세요</h3>
+          <div id="ml-grade-list" class="grid-buttons" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 20px;">
+            <!-- 학급 버튼 동적 생성 -->
+          </div>
+        </div>
+
+        <!-- 2단계: 학생 선택 및 한글 가상 키보드 검색 -->
+        <div id="ml-step-student" class="ml-step" style="display: none;">
+          <h3 style="margin-bottom: 12px;">② 이름을 선택하세요 <span id="ml-selected-grade" class="tool-badge" style="background: var(--accent); color: white;">학년/반</span></h3>
+          <div style="display: flex; gap: 8px; margin-bottom: 12px; position: relative;">
+            <input id="ml-search-name" type="text" placeholder="이름 초성 또는 글자 입력" style="flex: 1; padding: 10px; border-radius: 6px; border: 1px solid var(--line); font-size: 16px;" autocomplete="off" />
+            <button id="ml-btn-keyboard" class="ghost" style="padding: 10px 14px; font-size: 16px;">⌨️</button>
+          </div>
+          
+          <!-- 한글 가상 키보드 컨테이너 -->
+          <div id="ml-virtual-keyboard" class="virtual-keyboard" style="display: none; margin-bottom: 12px;">
+            <!-- 가상 키보드 자판 동적 생성 -->
+          </div>
+
+          <div id="ml-student-list" class="grid-buttons" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; max-height: 250px; overflow-y: auto; padding: 4px; border: 1px solid var(--line); border-radius: 8px;">
+            <!-- 학생 버튼 동적 생성 -->
+          </div>
+          <button id="ml-back-to-grade" class="ghost" style="margin-top: 12px; width: 100%;">◀ 학급 다시 선택</button>
+        </div>
+
+        <!-- 3단계: 아이콘 비밀번호 입력 (패턴) -->
+        <div id="ml-step-password" class="ml-step" style="display: none;">
+          <h3 style="margin-bottom: 4px;">③ 비밀번호를 입력하세요</h3>
+          <div class="overlay__name" id="ml-selected-student-name" style="font-size: 18px; font-weight: bold; margin-bottom: 12px;">○○○ 학생</div>
+          <p id="ml-pw-guide" class="hint" style="margin-bottom: 12px;">아래의 아이콘 중 4개를 순서대로 터치하세요.</p>
+          
+          <!-- 입력중인 비밀번호 표시 -->
+          <div class="pw-indicator-row" style="display: flex; justify-content: center; gap: 12px; margin-bottom: 20px;">
+            <span class="pw-dot" data-idx="0"></span>
+            <span class="pw-dot" data-idx="1"></span>
+            <span class="pw-dot" data-idx="2"></span>
+            <span class="pw-dot" data-idx="3"></span>
+          </div>
+
+          <!-- 아이콘 패드 -->
+          <div class="icon-password-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; max-width: 320px; margin: 0 auto 20px;">
+            <button class="btn-pw-icon" data-icon="🍎" style="font-size: 32px; padding: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; cursor: pointer;">🍎</button>
+            <button class="btn-pw-icon" data-icon="🍌" style="font-size: 32px; padding: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; cursor: pointer;">🍌</button>
+            <button class="btn-pw-icon" data-icon="🍇" style="font-size: 32px; padding: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; cursor: pointer;">🍇</button>
+            <button class="btn-pw-icon" data-icon="🍓" style="font-size: 32px; padding: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; cursor: pointer;">🍓</button>
+            <button class="btn-pw-icon" data-icon="🍒" style="font-size: 32px; padding: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; cursor: pointer;">🍒</button>
+            <button class="btn-pw-icon" data-icon="🍍" style="font-size: 32px; padding: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; cursor: pointer;">🍍</button>
+            <button class="btn-pw-icon" data-icon="🍉" style="font-size: 32px; padding: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; cursor: pointer;">🍉</button>
+            <button class="btn-pw-icon" data-icon="🍊" style="font-size: 32px; padding: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; cursor: pointer;">🍊</button>
+          </div>
+
+          <div id="ml-pw-msg" class="msg" style="margin-bottom: 12px; text-align: center;"></div>
+          <div style="display: flex; gap: 8px;">
+            <button id="ml-btn-clear-pw" class="secondary" style="flex: 1;">지우기</button>
+            <button id="ml-back-to-student" class="ghost" style="flex: 1;">이름 다시 선택</button>
+          </div>
+        </div>
+
+        <div class="overlay__skip" id="ml-overlay-close" style="position: static; margin-top: 16px; text-align: center;">닫기</div>
       </div>
     </div>
 

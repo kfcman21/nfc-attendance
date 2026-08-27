@@ -3,6 +3,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { mkdirSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // 배포(.exe) 시에는 쓰기 가능한 사용자 데이터 폴더(NFC_DATA_DIR)를 사용,
@@ -140,6 +141,11 @@ if (!attCols.some((c) => c.name === 'mood')) {
 const studentCols = db.prepare('PRAGMA table_info(students)').all();
 if (!studentCols.some((c) => c.name === 'points')) {
   db.exec('ALTER TABLE students ADD COLUMN points INTEGER DEFAULT 0');
+}
+
+// 마이그레이션: 비밀번호(password) 컬럼 추가
+if (!studentCols.some((c) => c.name === 'password')) {
+  db.exec('ALTER TABLE students ADD COLUMN password TEXT');
 }
 
 // 마이그레이션: 출석 점수(score)·상태(status) 컬럼 추가 (정시/지각 점수 기능)
@@ -962,6 +968,29 @@ export function factoryReset() {
     DELETE FROM stations;
     DELETE FROM students;
   `);
+}
+
+// ---- 수동 로그인 (비밀번호 및 학급 조회) ----
+export function listGrades() {
+  const rows = db.prepare("SELECT DISTINCT grade FROM students WHERE grade IS NOT NULL AND grade <> '' ORDER BY grade").all();
+  return rows.map(r => r.grade);
+}
+
+export function listStudentsByGrade(grade) {
+  return db.prepare("SELECT id, name, student_no, grade, (password IS NOT NULL) AS has_password, points FROM students WHERE grade = ? ORDER BY CASE WHEN student_no GLOB '*[0-9]*' THEN CAST(student_no AS INTEGER) END, name").all(grade);
+}
+
+export function setStudentPassword(id, plainPassword) {
+  const hash = createHash('sha256').update(plainPassword).digest('hex');
+  db.prepare('UPDATE students SET password = ? WHERE id = ?').run(hash, id);
+  return db.prepare('SELECT id, name, student_no, grade, (password IS NOT NULL) AS has_password FROM students WHERE id = ?').get(id);
+}
+
+export function verifyStudentPassword(id, plainPassword) {
+  const student = db.prepare('SELECT password FROM students WHERE id = ?').get(id);
+  if (!student || !student.password) return false;
+  const hash = createHash('sha256').update(plainPassword).digest('hex');
+  return student.password === hash;
 }
 
 export default db;
